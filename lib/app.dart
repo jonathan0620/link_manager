@@ -50,7 +50,7 @@ class LinkManagerApp extends ConsumerWidget {
           color: AppColors.onBackground,
         ),
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: AppColors.cardBackground,
         elevation: 0,
         shape: RoundedRectangleBorder(
@@ -118,7 +118,7 @@ class LinkManagerApp extends ConsumerWidget {
           borderRadius: BorderRadius.circular(20),
         ),
       ),
-      dialogTheme: DialogTheme(
+      dialogTheme: DialogThemeData(
         backgroundColor: AppColors.surface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),

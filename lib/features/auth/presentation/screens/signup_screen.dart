@@ -218,7 +218,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
                     textInputAction: TextInputAction.done,
-                    prefixIcon: const Icon(Icons.email_outline),
+                    prefixIcon: const Icon(Icons.email_outlined),
                     onChanged: _validateEmail,
                     isValid: _emailValidation?.isValid == true,
                     errorText: _emailValidation?.isValid == false

@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:metadata_fetch/metadata_fetch.dart';
+import 'package:http/http.dart' as http;
+import 'package:html/parser.dart' as html_parser;
 import '../../home/data/models/link_model.dart';
 
 /// Link form state
@@ -96,12 +97,37 @@ class LinkFormNotifier extends StateNotifier<LinkFormState> {
     state = state.copyWith(isFetchingMetadata: true);
 
     try {
-      final metadata = await MetadataFetch.extract(url);
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {'User-Agent': 'Mozilla/5.0'},
+      ).timeout(const Duration(seconds: 10));
 
-      if (metadata != null) {
+      if (response.statusCode == 200) {
+        final document = html_parser.parse(response.body);
+
+        // Extract title
+        String? title;
+        final ogTitle = document.querySelector('meta[property="og:title"]');
+        if (ogTitle != null) {
+          title = ogTitle.attributes['content'];
+        }
+        title ??= document.querySelector('title')?.text;
+
+        // Extract image
+        String? imageUrl;
+        final ogImage = document.querySelector('meta[property="og:image"]');
+        if (ogImage != null) {
+          imageUrl = ogImage.attributes['content'];
+          // Handle relative URLs
+          if (imageUrl != null && !imageUrl.startsWith('http')) {
+            final uri = Uri.parse(url);
+            imageUrl = '${uri.scheme}://${uri.host}$imageUrl';
+          }
+        }
+
         state = state.copyWith(
-          title: metadata.title ?? state.title,
-          thumbnailUrl: metadata.image ?? state.thumbnailUrl,
+          title: title ?? state.title,
+          thumbnailUrl: imageUrl ?? state.thumbnailUrl,
           isFetchingMetadata: false,
         );
       } else {

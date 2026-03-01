@@ -142,7 +142,7 @@ class _FindIdScreenState extends ConsumerState<FindIdScreen> {
           keyboardType: TextInputType.emailAddress,
           textInputAction: TextInputAction.done,
           enabled: !_isCodeSent,
-          prefixIcon: const Icon(Icons.email_outline),
+          prefixIcon: const Icon(Icons.email_outlined),
           onChanged: _validateEmail,
           isValid: _emailValidation?.isValid == true,
           errorText:
