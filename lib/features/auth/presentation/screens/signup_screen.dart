@@ -102,29 +102,44 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
 
   Future<void> _handleNext() async {
     if (!_isFormValid) {
-      ToastHelper.showError('입력 정보를 확인해 주세요.');
+      _showSnackBar('입력 정보를 확인해 주세요.', isError: true);
       return;
     }
 
     setState(() => _isLoading = true);
 
-    final success = await ref.read(authNotifierProvider.notifier).sendVerificationCode(
-          email: _emailController.text.trim(),
-          purpose: 'signup',
-        );
+    try {
+      // 이메일 인증 없이 바로 회원가입
+      final success = await ref.read(authNotifierProvider.notifier).signUp(
+            username: _usernameController.text.trim(),
+            email: _emailController.text.trim(),
+            password: _passwordController.text,
+          );
 
-    setState(() => _isLoading = false);
+      setState(() => _isLoading = false);
 
-    if (success && mounted) {
-      ToastHelper.showSuccess(AppStrings.verificationCodeSent);
-      context.push('/signup/verify', extra: {
-        'username': _usernameController.text.trim(),
-        'email': _emailController.text.trim(),
-        'password': _passwordController.text,
-      });
-    } else {
-      ToastHelper.showError(AppStrings.errorGeneric);
+      if (success && mounted) {
+        _showSnackBar('회원가입이 완료되었습니다!', isError: false);
+        context.go('/onboarding');
+      } else {
+        final authState = ref.read(authNotifierProvider);
+        _showSnackBar(authState.errorMessage ?? '회원가입에 실패했습니다.', isError: true);
+      }
+    } catch (e) {
+      setState(() => _isLoading = false);
+      _showSnackBar('오류: $e', isError: true);
     }
+  }
+
+  void _showSnackBar(String message, {required bool isError}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? Colors.red : Colors.green,
+        duration: const Duration(seconds: 4),
+      ),
+    );
   }
 
   @override
@@ -230,9 +245,9 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                   ),
                   const SizedBox(height: 32),
 
-                  // Next button
+                  // Signup button
                   CustomButton(
-                    text: AppStrings.next,
+                    text: AppStrings.signup,
                     onPressed: _isFormValid && !_isLoading ? _handleNext : null,
                     isLoading: _isLoading,
                   ),

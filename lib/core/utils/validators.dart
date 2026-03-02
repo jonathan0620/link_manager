@@ -23,17 +23,16 @@ class Validators {
     return const ValidationResult(false, AppStrings.usernameInvalid);
   }
 
-  /// PW: 영문+숫자 조합 20자 이내
+  /// PW: 6자 이상
   static ValidationResult validatePassword(String value) {
     if (value.isEmpty) {
       return const ValidationResult(false, '비밀번호를 입력해 주세요.');
     }
 
-    final regex = RegExp(r'^(?=.*[a-zA-Z])(?=.*\d)[a-zA-Z\d]{1,20}$');
-    if (regex.hasMatch(value)) {
-      return const ValidationResult(true, AppStrings.passwordValid);
+    if (value.length >= 6) {
+      return const ValidationResult(true, '사용 가능한 비밀번호입니다.');
     }
-    return const ValidationResult(false, AppStrings.passwordInvalid);
+    return const ValidationResult(false, '비밀번호는 6자 이상이어야 합니다.');
   }
 
   /// Password confirmation

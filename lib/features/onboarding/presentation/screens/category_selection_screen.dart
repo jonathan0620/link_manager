@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_colors.dart';
-import '../../../../core/constants/app_strings.dart';
-import '../../../../core/widgets/custom_button.dart';
-import '../../../../core/widgets/toast_helper.dart';
+import '../../../../core/widgets/zoop_logo.dart';
 import '../../../auth/providers/auth_provider.dart';
 
 class CategorySelectionScreen extends ConsumerStatefulWidget {
@@ -21,46 +19,19 @@ class _CategorySelectionScreenState
   bool _isLoading = false;
 
   static const List<_CategoryItem> _categories = [
-    _CategoryItem(
-      id: 'technology',
-      name: AppStrings.technology,
-      icon: Icons.computer,
-    ),
-    _CategoryItem(
-      id: 'design',
-      name: AppStrings.design,
-      icon: Icons.palette,
-    ),
-    _CategoryItem(
-      id: 'business',
-      name: AppStrings.business,
-      icon: Icons.business_center,
-    ),
-    _CategoryItem(
-      id: 'lifestyle',
-      name: AppStrings.lifestyle,
-      icon: Icons.self_improvement,
-    ),
-    _CategoryItem(
-      id: 'entertainment',
-      name: AppStrings.entertainment,
-      icon: Icons.movie,
-    ),
-    _CategoryItem(
-      id: 'news',
-      name: AppStrings.news,
-      icon: Icons.newspaper,
-    ),
-    _CategoryItem(
-      id: 'education',
-      name: AppStrings.education,
-      icon: Icons.school,
-    ),
-    _CategoryItem(
-      id: 'others',
-      name: AppStrings.others,
-      icon: Icons.more_horiz,
-    ),
+    _CategoryItem(id: '요리', emoji: '🍳'),
+    _CategoryItem(id: '여행', emoji: '✈️'),
+    _CategoryItem(id: '게임', emoji: '🎮'),
+    _CategoryItem(id: '취미', emoji: '🎨'),
+    _CategoryItem(id: '디자인', emoji: '🎯'),
+    _CategoryItem(id: '업무', emoji: '💼'),
+    _CategoryItem(id: '맛집', emoji: '🍽️'),
+    _CategoryItem(id: '쇼핑', emoji: '🛒'),
+    _CategoryItem(id: '개발', emoji: '💻'),
+    _CategoryItem(id: '운동·스포츠', emoji: '🏃'),
+    _CategoryItem(id: '기사·글', emoji: '📰'),
+    _CategoryItem(id: '주식', emoji: '📈'),
+    _CategoryItem(id: '영상·영화', emoji: '🎬'),
   ];
 
   void _toggleCategory(String categoryId) {
@@ -74,16 +45,13 @@ class _CategorySelectionScreenState
   }
 
   Future<void> _handleComplete() async {
-    if (_selectedCategories.isEmpty) {
-      ToastHelper.showError('최소 1개 이상의 카테고리를 선택해 주세요.');
-      return;
-    }
-
     setState(() => _isLoading = true);
 
-    await ref.read(authNotifierProvider.notifier).updateSelectedCategories(
-          _selectedCategories.toList(),
-        );
+    if (_selectedCategories.isNotEmpty) {
+      await ref.read(authNotifierProvider.notifier).updateSelectedCategories(
+            _selectedCategories.toList(),
+          );
+    }
 
     setState(() => _isLoading = false);
 
@@ -92,80 +60,103 @@ class _CategorySelectionScreenState
     }
   }
 
-  void _handleSkip() {
-    context.go('/home');
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('관심 카테고리'),
-        backgroundColor: AppColors.background,
-        elevation: 0,
-        automaticallyImplyLeading: false,
-        actions: [
-          TextButton(
-            onPressed: _handleSkip,
-            child: const Text(
-              AppStrings.skipOnboarding,
-              style: TextStyle(color: AppColors.onSurfaceVariant),
-            ),
-          ),
-        ],
-      ),
+      backgroundColor: AppColors.surface,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Text(
-                AppStrings.selectCategories,
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.onBackground,
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                '선택한 카테고리를 기반으로 링크를 관리할 수 있습니다.',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: AppColors.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 32),
-              Expanded(
-                child: GridView.builder(
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 16,
-                    mainAxisSpacing: 16,
-                    childAspectRatio: 1.5,
-                  ),
-                  itemCount: _categories.length,
-                  itemBuilder: (context, index) {
-                    final category = _categories[index];
-                    final isSelected = _selectedCategories.contains(category.id);
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 600),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 48),
+              child: Column(
+                children: [
+                  // Logo
+                  const ZoopLogo(size: 48),
+                  const SizedBox(height: 32),
 
-                    return _CategoryCard(
-                      category: category,
-                      isSelected: isSelected,
-                      onTap: () => _toggleCategory(category.id),
-                    );
-                  },
-                ),
+                  // Title
+                  const Text(
+                    '어떤 종류의 링크를 저장하시나요?',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.onSurface,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+
+                  // Subtitle
+                  const Text(
+                    '자주 저장하는 링크에 따라 카테고리를 생성해 드려요.',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppColors.onSurfaceVariant,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 40),
+
+                  // Category Chips
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: Wrap(
+                        spacing: 12,
+                        runSpacing: 12,
+                        alignment: WrapAlignment.center,
+                        children: _categories.map((category) {
+                          final isSelected =
+                              _selectedCategories.contains(category.id);
+                          return _CategoryChip(
+                            category: category,
+                            isSelected: isSelected,
+                            onTap: () => _toggleCategory(category.id),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 32),
+
+                  // Complete Button
+                  SizedBox(
+                    width: double.infinity,
+                    height: 52,
+                    child: ElevatedButton(
+                      onPressed: _isLoading ? null : _handleComplete,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.buttonDisabled,
+                        foregroundColor: AppColors.buttonTextDisabled,
+                        disabledBackgroundColor: AppColors.buttonDisabled,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: _isLoading
+                          ? const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppColors.buttonTextDisabled,
+                              ),
+                            )
+                          : const Text(
+                              '완료',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 24),
-              CustomButton(
-                text: AppStrings.complete,
-                onPressed: _isLoading ? null : _handleComplete,
-                isLoading: _isLoading,
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -175,22 +166,20 @@ class _CategorySelectionScreenState
 
 class _CategoryItem {
   final String id;
-  final String name;
-  final IconData icon;
+  final String emoji;
 
   const _CategoryItem({
     required this.id,
-    required this.name,
-    required this.icon,
+    required this.emoji,
   });
 }
 
-class _CategoryCard extends StatelessWidget {
+class _CategoryChip extends StatelessWidget {
   final _CategoryItem category;
   final bool isSelected;
   final VoidCallback onTap;
 
-  const _CategoryCard({
+  const _CategoryChip({
     required this.category,
     required this.isSelected,
     required this.onTap,
@@ -199,36 +188,34 @@ class _CategoryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: isSelected ? AppColors.primaryContainer : AppColors.surface,
-      borderRadius: BorderRadius.circular(16),
+      color: isSelected ? AppColors.primary.withOpacity(0.1) : AppColors.surface,
+      borderRadius: BorderRadius.circular(24),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(24),
         child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(24),
             border: Border.all(
-              color: isSelected ? AppColors.primary : AppColors.outline,
+              color: isSelected ? AppColors.primary : AppColors.outlineVariant,
               width: isSelected ? 2 : 1,
             ),
           ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                category.icon,
-                size: 32,
-                color: isSelected ? AppColors.primary : AppColors.onSurfaceVariant,
-              ),
-              const SizedBox(height: 8),
               Text(
-                category.name,
+                category.emoji,
+                style: const TextStyle(fontSize: 20),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                category.id,
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: 15,
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                  color: isSelected
-                      ? AppColors.onPrimaryContainer
-                      : AppColors.onSurfaceVariant,
+                  color: isSelected ? AppColors.primary : AppColors.onSurface,
                 ),
               ),
             ],

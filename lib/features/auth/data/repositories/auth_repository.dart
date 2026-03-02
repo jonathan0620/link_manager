@@ -70,10 +70,24 @@ class AuthRepository {
     }
 
     // Create Firebase Auth user
-    final credential = await _auth.createUserWithEmailAndPassword(
-      email: email,
-      password: password,
-    );
+    UserCredential credential;
+    try {
+      credential = await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+    } on FirebaseAuthException catch (e) {
+      switch (e.code) {
+        case 'email-already-in-use':
+          throw Exception('이미 사용 중인 이메일입니다.');
+        case 'invalid-email':
+          throw Exception('유효하지 않은 이메일 형식입니다.');
+        case 'weak-password':
+          throw Exception('비밀번호가 너무 약합니다. 6자 이상 입력하세요.');
+        default:
+          throw Exception('회원가입 실패: ${e.message}');
+      }
+    }
 
     final user = credential.user;
     if (user == null) {
@@ -97,30 +111,61 @@ class AuthRepository {
     return userModel;
   }
 
-  /// Sign in with username and password
+  /// Sign in with username/email and password
   Future<UserModel> signIn({
     required String username,
     required String password,
   }) async {
-    // Find user by username
-    final query = await _firestore
-        .collection('users')
-        .where('username', isEqualTo: username)
-        .limit(1)
-        .get();
+    String email;
 
-    if (query.docs.isEmpty) {
+    // Check if input is email or username
+    if (username.contains('@')) {
+      // Input is email, use directly
+      email = username;
+    } else {
+      // Input is username, find email from Firestore
+      final query = await _firestore
+          .collection('users')
+          .where('username', isEqualTo: username)
+          .limit(1)
+          .get();
+
+      if (query.docs.isEmpty) {
+        throw Exception('아이디 또는 비밀번호가 올바르지 않습니다.');
+      }
+      email = query.docs.first.data()['email'] as String;
+    }
+
+    // Sign in with email
+    try {
+      await _auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+    } on FirebaseAuthException catch (e) {
       throw Exception('아이디 또는 비밀번호가 올바르지 않습니다.');
     }
 
-    final userDoc = query.docs.first;
-    final email = userDoc.data()['email'] as String;
+    // Get or create user model
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw Exception('로그인에 실패했습니다.');
+    }
 
-    // Sign in with email
-    await _auth.signInWithEmailAndPassword(
-      email: email,
-      password: password,
-    );
+    // Try to get existing user doc, or create a basic one
+    var userDoc = await _firestore.collection('users').doc(user.uid).get();
+    if (!userDoc.exists) {
+      // Create basic user document
+      final newUser = UserModel(
+        id: user.uid,
+        username: email.split('@')[0],
+        email: email,
+        createdAt: DateTime.now(),
+        selectedCategories: [],
+      );
+      await _firestore.collection('users').doc(user.uid).set(newUser.toFirestore());
+      return newUser;
+    }
 
     return UserModel.fromFirestore(userDoc);
   }

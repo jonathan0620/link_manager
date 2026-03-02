@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import '../models/category_model.dart';
 import '../models/link_model.dart';
 
@@ -13,7 +14,11 @@ class LinkRepository {
   })  : _firestore = firestore ?? FirebaseFirestore.instance,
         _auth = auth ?? FirebaseAuth.instance;
 
-  String? get _userId => _auth.currentUser?.uid;
+  String? get _userId {
+    final uid = _auth.currentUser?.uid;
+    debugPrint('[LinkRepository] Current userId: $uid');
+    return uid;
+  }
 
   CollectionReference<Map<String, dynamic>> get _linksCollection =>
       _firestore.collection('links');
@@ -37,15 +42,29 @@ class LinkRepository {
 
   /// Get recent links (last 10)
   Stream<List<LinkModel>> getRecentLinksStream({int limit = 10}) {
-    if (_userId == null) return Stream.value([]);
+    final userId = _userId;
+    debugPrint('[LinkRepository] getRecentLinksStream called, userId: $userId');
+    if (userId == null) {
+      debugPrint('[LinkRepository] userId is null, returning empty stream');
+      return Stream.value([]);
+    }
 
     return _linksCollection
-        .where('userId', isEqualTo: _userId)
+        .where('userId', isEqualTo: userId)
         .orderBy('createdAt', descending: true)
         .limit(limit)
         .snapshots()
-        .map((snapshot) =>
-            snapshot.docs.map((doc) => LinkModel.fromFirestore(doc)).toList());
+        .handleError((error) {
+          debugPrint('[LinkRepository] Stream error: $error');
+        })
+        .map((snapshot) {
+          debugPrint('[LinkRepository] Got ${snapshot.docs.length} links from Firestore');
+          final links = snapshot.docs.map((doc) => LinkModel.fromFirestore(doc)).toList();
+          for (var link in links) {
+            debugPrint('[LinkRepository] Link: ${link.id} - ${link.title}');
+          }
+          return links;
+        });
   }
 
   /// Get unread links
@@ -88,14 +107,16 @@ class LinkRepository {
     String? thumbnailUrl,
     String? label,
   }) async {
-    if (_userId == null) throw Exception('로그인이 필요합니다.');
+    final userId = _userId;
+    debugPrint('[LinkRepository] addLink called, userId: $userId, url: $url');
+    if (userId == null) throw Exception('로그인이 필요합니다.');
 
     final now = DateTime.now();
     final docRef = _linksCollection.doc();
 
     final link = LinkModel(
       id: docRef.id,
-      userId: _userId!,
+      userId: userId,
       url: url,
       title: title.isEmpty ? '제목 없음' : title,
       thumbnailUrl: thumbnailUrl,
@@ -105,7 +126,9 @@ class LinkRepository {
       updatedAt: now,
     );
 
+    debugPrint('[LinkRepository] Saving link to Firestore: ${link.id}');
     await docRef.set(link.toFirestore());
+    debugPrint('[LinkRepository] Link saved successfully!');
 
     // Update category link count if label exists
     if (label != null && label.isNotEmpty) {

@@ -1,4 +1,4 @@
-package com.linkmanager.link_manager
+package com.zoop.app
 
 import io.flutter.embedding.android.FlutterActivity
 

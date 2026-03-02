@@ -2,7 +2,7 @@ class AppStrings {
   AppStrings._();
 
   // App
-  static const String appName = 'Link Manager';
+  static const String appName = 'ZOOP';
 
   // Auth
   static const String login = '로그인';

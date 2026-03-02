@@ -1,5 +1,5 @@
-name: link_manager
-description: A Flutter link management app with Firebase backend.
+name: zoop
+description: ZOOP - A Flutter link management app with Firebase backend.
 publish_to: 'none'
 version: 1.0.0+1
 

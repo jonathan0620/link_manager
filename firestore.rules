@@ -15,8 +15,8 @@ service cloud.firestore {
 
     // Users collection
     match /users/{userId} {
-      // Allow users to read their own document
-      allow read: if isOwner(userId);
+      // Allow anyone to check if username exists (for signup)
+      allow read: if true;
 
       // Allow users to create their own document during signup
       allow create: if isAuthenticated() && request.auth.uid == userId;
