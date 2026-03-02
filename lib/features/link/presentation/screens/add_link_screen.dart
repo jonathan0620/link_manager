@@ -2,14 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_colors.dart';
-import '../../../../core/constants/app_strings.dart';
-import '../../../../core/widgets/custom_button.dart';
-import '../../../../core/widgets/custom_text_field.dart';
-import '../../../../core/widgets/toast_helper.dart';
+import '../../../../core/widgets/zoop_logo.dart';
 import '../../../home/providers/links_provider.dart';
 import '../../providers/link_form_provider.dart';
-import '../widgets/label_selector.dart';
-import '../widgets/link_preview.dart';
 
 class AddLinkScreen extends ConsumerStatefulWidget {
   const AddLinkScreen({super.key});
@@ -21,12 +16,10 @@ class AddLinkScreen extends ConsumerStatefulWidget {
 class _AddLinkScreenState extends ConsumerState<AddLinkScreen> {
   final _urlController = TextEditingController();
   final _titleController = TextEditingController();
-  final _urlFocusNode = FocusNode();
 
   @override
   void initState() {
     super.initState();
-    // Reset form on enter
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(linkFormProvider.notifier).reset();
     });
@@ -36,15 +29,12 @@ class _AddLinkScreenState extends ConsumerState<AddLinkScreen> {
   void dispose() {
     _urlController.dispose();
     _titleController.dispose();
-    _urlFocusNode.dispose();
     super.dispose();
   }
 
-  Future<void> _handleUrlSubmit() async {
-    final url = _urlController.text.trim();
+  Future<void> _handleUrlChange(String url) async {
     if (url.isNotEmpty) {
       await ref.read(linkFormProvider.notifier).updateUrl(url);
-      // Update title controller with fetched title
       final formState = ref.read(linkFormProvider);
       if (formState.title.isNotEmpty && _titleController.text.isEmpty) {
         _titleController.text = formState.title;
@@ -56,7 +46,7 @@ class _AddLinkScreenState extends ConsumerState<AddLinkScreen> {
     final formState = ref.read(linkFormProvider);
 
     if (formState.url.isEmpty) {
-      ToastHelper.showError('URL을 입력해 주세요.');
+      _showSnackBar('URL을 입력해 주세요.', isError: true);
       return;
     }
 
@@ -76,104 +66,333 @@ class _AddLinkScreenState extends ConsumerState<AddLinkScreen> {
     ref.read(linkFormProvider.notifier).setLoading(false);
 
     if (link != null && mounted) {
-      ToastHelper.showSuccess(AppStrings.linkSaved);
+      _showSnackBar('링크 ZOOP 완료!');
       context.pop();
     } else {
-      ToastHelper.showError(AppStrings.errorGeneric);
+      _showSnackBar('오류가 발생했습니다.', isError: true);
     }
+  }
+
+  void _showSnackBar(String message, {bool isError = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(
+              isError ? Icons.error : Icons.check_circle,
+              color: Colors.white,
+            ),
+            const SizedBox(width: 8),
+            Text(message),
+          ],
+        ),
+        backgroundColor: isError ? AppColors.error : AppColors.onBackground,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final formState = ref.watch(linkFormProvider);
+    final isValid = formState.url.isNotEmpty;
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text(AppStrings.addLink),
-        backgroundColor: AppColors.background,
-        elevation: 0,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+      body: SafeArea(
+        child: Row(
           children: [
-            // URL input
-            CustomTextField(
-              label: 'URL',
-              hint: AppStrings.urlPlaceholder,
-              controller: _urlController,
-              focusNode: _urlFocusNode,
-              keyboardType: TextInputType.url,
-              textInputAction: TextInputAction.done,
-              prefixIcon: const Icon(Icons.link),
-              onSubmitted: (_) => _handleUrlSubmit(),
-              onChanged: (value) {
-                // Debounced URL fetch could be added here
-              },
-            ),
-            const SizedBox(height: 8),
-
-            // Fetch metadata button
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton.icon(
-                onPressed:
-                    formState.isFetchingMetadata ? null : _handleUrlSubmit,
-                icon: formState.isFetchingMetadata
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.refresh, size: 18),
-                label: const Text('미리보기 가져오기'),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Link preview
-            if (formState.url.isNotEmpty)
-              LinkPreview(
-                thumbnailUrl: formState.thumbnailUrl,
-                title:
-                    _titleController.text.isEmpty ? formState.title : _titleController.text,
-                url: formState.url,
-                isLoading: formState.isFetchingMetadata,
-              ),
-            const SizedBox(height: 24),
-
-            // Title input
-            CustomTextField(
-              label: '제목',
-              hint: AppStrings.titlePlaceholder,
-              controller: _titleController,
-              textInputAction: TextInputAction.next,
-              prefixIcon: const Icon(Icons.title),
-              helperText: formState.title.isNotEmpty
-                  ? '자동 추출: ${formState.title}'
-                  : null,
-            ),
-            const SizedBox(height: 24),
-
-            // Label selector
-            LabelSelector(
-              selectedLabel: formState.label,
-              onLabelSelected: (label) {
-                ref.read(linkFormProvider.notifier).updateLabel(label);
-              },
-            ),
-            const SizedBox(height: 32),
-
-            // Save button
-            CustomButton(
-              text: AppStrings.save,
-              onPressed: formState.isLoading ? null : _handleSave,
-              isLoading: formState.isLoading,
+            // Left Sidebar
+            _buildSidebar(),
+            // Main Content
+            Expanded(
+              child: _buildContent(formState, isValid),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildSidebar() {
+    return Container(
+      width: 72,
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border(
+          right: BorderSide(color: AppColors.outlineVariant, width: 1),
+        ),
+      ),
+      child: Column(
+        children: [
+          const SizedBox(height: 16),
+          const ZoopLogo(size: 20),
+          const SizedBox(height: 24),
+          _buildNavIcon(Icons.home_rounded, false, () => context.go('/home')),
+          _buildNavIcon(Icons.link_rounded, true, () {}),
+          _buildNavIcon(Icons.search_rounded, false, () => context.push('/search')),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNavIcon(IconData icon, bool isSelected, VoidCallback onTap) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            color: isSelected ? AppColors.primary : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(
+            icon,
+            color: isSelected ? Colors.white : AppColors.onSurfaceVariant,
+            size: 24,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildContent(LinkFormState formState, bool isValid) {
+    return Container(
+      color: AppColors.surface,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header with back button
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () => context.pop(),
+              style: IconButton.styleFrom(
+                backgroundColor: Colors.transparent,
+              ),
+            ),
+          ),
+
+          // Form content
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // URL Field
+                  _buildLabel('링크 주소', isRequired: true),
+                  const SizedBox(height: 8),
+                  _buildUrlField(formState),
+                  const SizedBox(height: 16),
+
+                  // Thumbnail Preview
+                  if (formState.thumbnailUrl != null && formState.thumbnailUrl!.isNotEmpty)
+                    _buildThumbnailPreview(formState.thumbnailUrl!),
+
+                  // Title Field
+                  _buildLabel('제목'),
+                  const SizedBox(height: 8),
+                  _buildTitleField(),
+                  const SizedBox(height: 24),
+
+                  // Label Section
+                  _buildLabel('라벨링'),
+                  const SizedBox(height: 12),
+                  _buildLabelGrid(formState.label),
+                  const SizedBox(height: 32),
+
+                  // Save Button
+                  _buildSaveButton(formState.isLoading, isValid),
+                  const SizedBox(height: 32),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLabel(String text, {bool isRequired = false}) {
+    return Row(
+      children: [
+        Text(
+          text,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: AppColors.onSurface,
+          ),
+        ),
+        if (isRequired)
+          const Text(
+            ' *',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: AppColors.error,
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildUrlField(LinkFormState formState) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surfaceVariant,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: _urlController,
+              style: const TextStyle(fontSize: 14, color: AppColors.onSurface),
+              decoration: const InputDecoration(
+                hintText: '링크를 입력해 주세요..',
+                hintStyle: TextStyle(color: AppColors.textHint),
+                border: InputBorder.none,
+                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              ),
+              onChanged: _handleUrlChange,
+              onSubmitted: (_) => _handleUrlChange(_urlController.text),
+            ),
+          ),
+          if (_urlController.text.isNotEmpty || formState.isFetchingMetadata)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: formState.isFetchingMetadata
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : IconButton(
+                      icon: const Icon(Icons.clear, size: 20),
+                      onPressed: () {
+                        _urlController.clear();
+                        ref.read(linkFormProvider.notifier).reset();
+                      },
+                    ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildThumbnailPreview(String thumbnailUrl) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 24),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Image.network(
+          thumbnailUrl,
+          width: double.infinity,
+          height: 200,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => const SizedBox(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTitleField() {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surfaceVariant,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: TextField(
+        controller: _titleController,
+        style: const TextStyle(fontSize: 14, color: AppColors.onSurface),
+        decoration: const InputDecoration(
+          hintText: '제목을 입력해 주세요. (미입력 시 자체 링크 제목 입력)',
+          hintStyle: TextStyle(color: AppColors.textHint, fontSize: 13),
+          border: InputBorder.none,
+          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLabelGrid(String? selectedLabel) {
+    final labels = [
+      ('🍳', '요리'),
+      ('✈️', '여행'),
+      ('🎮', '게임'),
+      ('🎨', '취미'),
+      ('🎯', '디자인'),
+      ('💼', '업무'),
+      ('🍽️', '맛집'),
+      ('🛒', '쇼핑'),
+      ('💻', '개발'),
+      ('🏃', '운동'),
+      ('📰', '기사'),
+      ('📈', '주식'),
+      ('🎬', '영상'),
+    ];
+
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: labels.map((label) {
+        final isSelected = selectedLabel == label.$2;
+        return InkWell(
+          onTap: () {
+            ref.read(linkFormProvider.notifier).updateLabel(
+              isSelected ? null : label.$2,
+            );
+          },
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: isSelected ? AppColors.primary.withOpacity(0.1) : AppColors.surfaceVariant,
+              borderRadius: BorderRadius.circular(12),
+              border: isSelected
+                  ? Border.all(color: AppColors.primary, width: 2)
+                  : null,
+            ),
+            child: Center(
+              child: Text(label.$1, style: const TextStyle(fontSize: 24)),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildSaveButton(bool isLoading, bool isValid) {
+    return SizedBox(
+      width: double.infinity,
+      height: 52,
+      child: ElevatedButton(
+        onPressed: isLoading ? null : (isValid ? _handleSave : null),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: isValid ? AppColors.primary : AppColors.buttonDisabled,
+          foregroundColor: isValid ? Colors.white : AppColors.buttonTextDisabled,
+          disabledBackgroundColor: AppColors.buttonDisabled,
+          elevation: 0,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+        child: isLoading
+            ? const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+              )
+            : const Text(
+                '링크 저장',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
       ),
     );
   }

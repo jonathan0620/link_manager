@@ -10,6 +10,8 @@
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
 const nodemailer = require('nodemailer');
+const https = require('https');
+const http = require('http');
 
 admin.initializeApp();
 
@@ -264,3 +266,134 @@ exports.cleanupExpiredCodes = functions.pubsub
 
     return null;
   });
+
+/**
+ * Fetch URL metadata (title, description, image)
+ * @param {Object} data - { url: string }
+ * @returns {Object} - { title: string, description: string, imageUrl: string }
+ */
+exports.fetchUrlMetadata = functions.https.onCall(async (data, context) => {
+  const { url } = data;
+
+  if (!url) {
+    throw new functions.https.HttpsError(
+      'invalid-argument',
+      'URL을 입력해 주세요.'
+    );
+  }
+
+  try {
+    const html = await fetchUrl(url);
+    const metadata = extractMetadata(html, url);
+    return metadata;
+  } catch (error) {
+    console.error('Error fetching metadata:', error);
+    return { title: '', description: '', imageUrl: '' };
+  }
+});
+
+/**
+ * Fetch URL content
+ */
+function fetchUrl(url) {
+  return new Promise((resolve, reject) => {
+    const protocol = url.startsWith('https') ? https : http;
+
+    const request = protocol.get(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml',
+        'Accept-Language': 'ko-KR,ko;q=0.9,en;q=0.8',
+      },
+      timeout: 10000,
+    }, (response) => {
+      // Handle redirects
+      if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
+        const redirectUrl = response.headers.location.startsWith('http')
+          ? response.headers.location
+          : new URL(response.headers.location, url).href;
+        fetchUrl(redirectUrl).then(resolve).catch(reject);
+        return;
+      }
+
+      let data = '';
+      response.setEncoding('utf8');
+      response.on('data', (chunk) => data += chunk);
+      response.on('end', () => resolve(data));
+    });
+
+    request.on('error', reject);
+    request.on('timeout', () => {
+      request.destroy();
+      reject(new Error('Request timeout'));
+    });
+  });
+}
+
+/**
+ * Extract metadata from HTML
+ */
+function extractMetadata(html, baseUrl) {
+  const getMetaContent = (property) => {
+    const patterns = [
+      new RegExp(`<meta[^>]*property=["']${property}["'][^>]*content=["']([^"']+)["']`, 'i'),
+      new RegExp(`<meta[^>]*content=["']([^"']+)["'][^>]*property=["']${property}["']`, 'i'),
+      new RegExp(`<meta[^>]*name=["']${property}["'][^>]*content=["']([^"']+)["']`, 'i'),
+      new RegExp(`<meta[^>]*content=["']([^"']+)["'][^>]*name=["']${property}["']`, 'i'),
+    ];
+
+    for (const pattern of patterns) {
+      const match = html.match(pattern);
+      if (match) return match[1];
+    }
+    return '';
+  };
+
+  // Get title
+  let title = getMetaContent('og:title') || getMetaContent('twitter:title');
+  if (!title) {
+    const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+    title = titleMatch ? titleMatch[1].trim() : '';
+  }
+
+  // Get description
+  const description = getMetaContent('og:description') ||
+                     getMetaContent('twitter:description') ||
+                     getMetaContent('description');
+
+  // Get image
+  let imageUrl = getMetaContent('og:image') || getMetaContent('twitter:image');
+
+  // Handle relative URLs
+  if (imageUrl && !imageUrl.startsWith('http')) {
+    try {
+      const base = new URL(baseUrl);
+      imageUrl = imageUrl.startsWith('/')
+        ? `${base.protocol}//${base.host}${imageUrl}`
+        : `${base.protocol}//${base.host}/${imageUrl}`;
+    } catch (e) {
+      imageUrl = '';
+    }
+  }
+
+  return {
+    title: decodeHtmlEntities(title),
+    description: decodeHtmlEntities(description),
+    imageUrl,
+  };
+}
+
+/**
+ * Decode HTML entities
+ */
+function decodeHtmlEntities(text) {
+  if (!text) return '';
+  return text
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#039;/g, '\'')
+    .replace(/&#x27;/g, '\'')
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(code));
+}

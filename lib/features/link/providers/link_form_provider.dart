@@ -1,3 +1,5 @@
+import 'package:cloud_functions/cloud_functions.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:html/parser.dart' as html_parser;
@@ -48,7 +50,11 @@ class LinkFormState {
 
 /// Link form notifier
 class LinkFormNotifier extends StateNotifier<LinkFormState> {
-  LinkFormNotifier() : super(const LinkFormState());
+  final FirebaseFunctions _functions;
+
+  LinkFormNotifier({FirebaseFunctions? functions})
+      : _functions = functions ?? FirebaseFunctions.instance,
+        super(const LinkFormState());
 
   /// Initialize with existing link data (for editing)
   void initWithLink(LinkModel link) {
@@ -89,6 +95,8 @@ class LinkFormNotifier extends StateNotifier<LinkFormState> {
       return;
     }
 
+    state = state.copyWith(url: urlWithProtocol);
+
     // Fetch metadata
     await _fetchMetadata(urlWithProtocol);
   }
@@ -96,6 +104,45 @@ class LinkFormNotifier extends StateNotifier<LinkFormState> {
   Future<void> _fetchMetadata(String url) async {
     state = state.copyWith(isFetchingMetadata: true);
 
+    try {
+      // Try Cloud Function first (works on web)
+      if (kIsWeb) {
+        await _fetchMetadataViaCloudFunction(url);
+      } else {
+        // On mobile, we can fetch directly
+        await _fetchMetadataDirectly(url);
+      }
+    } catch (e) {
+      debugPrint('[LinkFormNotifier] Error fetching metadata: $e');
+      state = state.copyWith(
+        isFetchingMetadata: false,
+        title: state.title.isEmpty ? '' : state.title,
+      );
+    }
+  }
+
+  Future<void> _fetchMetadataViaCloudFunction(String url) async {
+    try {
+      final callable = _functions.httpsCallable('fetchUrlMetadata');
+      final result = await callable.call({'url': url});
+
+      final data = result.data as Map<String, dynamic>;
+      final title = data['title'] as String? ?? '';
+      final imageUrl = data['imageUrl'] as String? ?? '';
+
+      state = state.copyWith(
+        title: title.isNotEmpty ? title : state.title,
+        thumbnailUrl: imageUrl.isNotEmpty ? imageUrl : state.thumbnailUrl,
+        isFetchingMetadata: false,
+      );
+    } catch (e) {
+      debugPrint('[LinkFormNotifier] Cloud Function error: $e');
+      // Fallback to direct fetch
+      await _fetchMetadataDirectly(url);
+    }
+  }
+
+  Future<void> _fetchMetadataDirectly(String url) async {
     try {
       final response = await http.get(
         Uri.parse(url),
@@ -136,7 +183,7 @@ class LinkFormNotifier extends StateNotifier<LinkFormState> {
     } catch (e) {
       state = state.copyWith(
         isFetchingMetadata: false,
-        title: state.title.isEmpty ? '제목 없음' : state.title,
+        title: state.title.isEmpty ? '' : state.title,
       );
     }
   }
