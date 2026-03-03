@@ -1,4 +1,5 @@
-import 'package:cloud_functions/cloud_functions.dart';
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
@@ -51,11 +52,7 @@ class LinkFormState {
 
 /// Link form notifier
 class LinkFormNotifier extends StateNotifier<LinkFormState> {
-  final FirebaseFunctions _functions;
-
-  LinkFormNotifier({FirebaseFunctions? functions})
-      : _functions = functions ?? FirebaseFunctions.instance,
-        super(const LinkFormState());
+  LinkFormNotifier() : super(const LinkFormState());
 
   /// Initialize with existing link data (for editing)
   void initWithLink(LinkModel link) {
@@ -120,23 +117,49 @@ class LinkFormNotifier extends StateNotifier<LinkFormState> {
   }
 
   Future<void> _fetchMetadataViaCloudFunction(String url) async {
+    // Use Microlink API (free, no API key required, CORS-friendly)
     try {
-      final callable = _functions.httpsCallable('fetchUrlMetadata');
-      final result = await callable.call({'url': url});
+      final apiUrl = 'https://api.microlink.io/?url=${Uri.encodeComponent(url)}';
+      final response = await http.get(Uri.parse(apiUrl)).timeout(
+        const Duration(seconds: 10),
+      );
 
-      final data = result.data as Map<String, dynamic>;
-      final title = data['title'] as String? ?? '';
-      final imageUrl = data['imageUrl'] as String? ?? '';
+      if (response.statusCode == 200) {
+        final json = Uri.splitQueryString(response.body);
+        // Parse JSON response
+        final data = _parseJson(response.body);
 
-      state = state.copyWith(
-        title: title.isNotEmpty ? title : state.title,
-        thumbnailUrl: imageUrl.isNotEmpty ? imageUrl : state.thumbnailUrl,
-        isFetchingMetadata: false,
+        if (data != null && data['status'] == 'success') {
+          final dataObj = data['data'] as Map<String, dynamic>?;
+          if (dataObj != null) {
+            final title = dataObj['title'] as String? ?? '';
+            final imageData = dataObj['image'] as Map<String, dynamic>?;
+            final imageUrl = imageData?['url'] as String? ?? '';
+
+            state = state.copyWith(
+              title: title.isNotEmpty ? title : state.title,
+              thumbnailUrl: imageUrl.isNotEmpty ? imageUrl : state.thumbnailUrl,
+              isFetchingMetadata: false,
+            );
+            return;
+          }
+        }
+      }
+
+      state = state.copyWith(isFetchingMetadata: false);
+    } catch (e) {
+      debugPrint('[LinkFormNotifier] Microlink API error: $e');
+      state = state.copyWith(isFetchingMetadata: false);
+    }
+  }
+
+  Map<String, dynamic>? _parseJson(String body) {
+    try {
+      return Map<String, dynamic>.from(
+        (const JsonDecoder().convert(body)) as Map,
       );
     } catch (e) {
-      debugPrint('[LinkFormNotifier] Cloud Function error: $e');
-      // Fallback to direct fetch
-      await _fetchMetadataDirectly(url);
+      return null;
     }
   }
 
