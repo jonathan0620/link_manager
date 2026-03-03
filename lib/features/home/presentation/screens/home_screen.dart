@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/utils/share_helper.dart';
 import '../../../../core/widgets/zoop_logo.dart';
 import '../../../auth/providers/auth_provider.dart';
 import '../../data/models/link_model.dart';
@@ -555,16 +557,43 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     tooltip: '즐겨찾기',
                   ),
                   IconButton(
-                    icon: const Icon(Icons.edit_outlined, size: 20),
+                    icon: const Icon(Icons.share_outlined, size: 20),
                     color: AppColors.onSurfaceVariant,
-                    onPressed: () => context.push('/edit-link/${link.id}'),
-                    tooltip: '수정',
+                    onPressed: () => _showShareBottomSheet(link),
+                    tooltip: '공유',
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline, size: 20),
-                    color: AppColors.onSurfaceVariant,
-                    onPressed: () => _showDeleteDialog(link),
-                    tooltip: '삭제',
+                  PopupMenuButton<String>(
+                    icon: const Icon(Icons.more_vert, size: 20),
+                    iconColor: AppColors.onSurfaceVariant,
+                    onSelected: (value) {
+                      if (value == 'edit') {
+                        context.push('/edit-link/${link.id}');
+                      } else if (value == 'delete') {
+                        _showDeleteDialog(link);
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      const PopupMenuItem(
+                        value: 'edit',
+                        child: Row(
+                          children: [
+                            Icon(Icons.edit_outlined, size: 18),
+                            SizedBox(width: 8),
+                            Text('수정'),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuItem(
+                        value: 'delete',
+                        child: Row(
+                          children: [
+                            Icon(Icons.delete_outline, size: 18, color: AppColors.error),
+                            SizedBox(width: 8),
+                            Text('삭제', style: TextStyle(color: AppColors.error)),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -648,6 +677,174 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             child: const Text('로그아웃'),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showShareBottomSheet(LinkModel link) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Handle bar
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.outlineVariant,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Title
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Text(
+                  link.title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.onSurface,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Text(
+                  link.url,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.onSurfaceVariant,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // Share options
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _buildShareOption(
+                    icon: Icons.copy,
+                    label: '복사',
+                    color: AppColors.primary,
+                    onTap: () async {
+                      Navigator.of(context).pop();
+                      final success = await ShareHelper.copyToClipboard(link.url);
+                      if (success && mounted) {
+                        _showSnackBar('링크가 복사되었습니다.');
+                      }
+                    },
+                  ),
+                  _buildShareOption(
+                    icon: Icons.chat_bubble,
+                    label: '카카오톡',
+                    color: const Color(0xFFFFE812),
+                    iconColor: Colors.black87,
+                    onTap: () async {
+                      Navigator.of(context).pop();
+                      final success = await ShareHelper.shareViaKakaoTalk(
+                        url: link.url,
+                        title: link.title,
+                      );
+                      if (!success && mounted) {
+                        // Fallback: copy to clipboard
+                        await ShareHelper.copyToClipboard(link.url);
+                        _showSnackBar('카카오톡 앱이 없어 링크를 복사했습니다.');
+                      }
+                    },
+                  ),
+                  _buildShareOption(
+                    icon: Icons.share,
+                    label: '더보기',
+                    color: AppColors.onSurfaceVariant,
+                    onTap: () async {
+                      Navigator.of(context).pop();
+                      await ShareHelper.shareLink(
+                        url: link.url,
+                        title: link.title,
+                      );
+                    },
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildShareOption({
+    required IconData icon,
+    required String label,
+    required Color color,
+    Color? iconColor,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Icon(
+                icon,
+                color: iconColor ?? color,
+                size: 28,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.onSurface,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle, color: Colors.white),
+            const SizedBox(width: 8),
+            Text(message),
+          ],
+        ),
+        backgroundColor: AppColors.onBackground,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
     );
   }

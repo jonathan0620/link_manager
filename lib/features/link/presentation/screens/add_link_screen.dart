@@ -96,7 +96,7 @@ class _AddLinkScreenState extends ConsumerState<AddLinkScreen> {
   @override
   Widget build(BuildContext context) {
     final formState = ref.watch(linkFormProvider);
-    final isValid = formState.url.isNotEmpty;
+    final isValid = formState.url.isNotEmpty && formState.error == null;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -244,46 +244,72 @@ class _AddLinkScreenState extends ConsumerState<AddLinkScreen> {
   }
 
   Widget _buildUrlField(LinkFormState formState) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surfaceVariant,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: TextField(
-              controller: _urlController,
-              style: const TextStyle(fontSize: 14, color: AppColors.onSurface),
-              decoration: const InputDecoration(
-                hintText: '링크를 입력해 주세요..',
-                hintStyle: TextStyle(color: AppColors.textHint),
-                border: InputBorder.none,
-                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              ),
-              onChanged: _handleUrlChange,
-              onSubmitted: (_) => _handleUrlChange(_urlController.text),
-            ),
+    final hasError = formState.error != null && formState.error!.isNotEmpty;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            color: AppColors.surfaceVariant,
+            borderRadius: BorderRadius.circular(12),
+            border: hasError
+                ? Border.all(color: AppColors.error, width: 1.5)
+                : null,
           ),
-          if (_urlController.text.isNotEmpty || formState.isFetchingMetadata)
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: formState.isFetchingMetadata
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : IconButton(
-                      icon: const Icon(Icons.clear, size: 20),
-                      onPressed: () {
-                        _urlController.clear();
-                        ref.read(linkFormProvider.notifier).reset();
-                      },
-                    ),
-            ),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _urlController,
+                  style: const TextStyle(fontSize: 14, color: AppColors.onSurface),
+                  decoration: const InputDecoration(
+                    hintText: '링크를 입력해 주세요..',
+                    hintStyle: TextStyle(color: AppColors.textHint),
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  ),
+                  onChanged: _handleUrlChange,
+                  onSubmitted: (_) => _handleUrlChange(_urlController.text),
+                ),
+              ),
+              if (_urlController.text.isNotEmpty || formState.isFetchingMetadata)
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: formState.isFetchingMetadata
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : IconButton(
+                          icon: const Icon(Icons.clear, size: 20),
+                          onPressed: () {
+                            _urlController.clear();
+                            ref.read(linkFormProvider.notifier).reset();
+                          },
+                        ),
+                ),
+            ],
+          ),
+        ),
+        if (hasError) ...[
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              const Icon(Icons.error_outline, size: 14, color: AppColors.error),
+              const SizedBox(width: 4),
+              Text(
+                formState.error!,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.error,
+                ),
+              ),
+            ],
+          ),
         ],
-      ),
+      ],
     );
   }
 

@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:html/parser.dart' as html_parser;
+import '../../../core/utils/url_sanitizer.dart';
 import '../../home/data/models/link_model.dart';
 
 /// Link form state
@@ -73,7 +74,7 @@ class LinkFormNotifier extends StateNotifier<LinkFormState> {
 
   /// Update URL and fetch metadata
   Future<void> updateUrl(String url) async {
-    state = state.copyWith(url: url);
+    state = state.copyWith(url: url, error: null);
 
     if (url.isEmpty) {
       state = state.copyWith(
@@ -83,22 +84,19 @@ class LinkFormNotifier extends StateNotifier<LinkFormState> {
       return;
     }
 
-    // Validate URL format
-    final urlWithProtocol = url.startsWith('http') ? url : 'https://$url';
+    // Validate and sanitize URL for security
+    final validationResult = UrlSanitizer.validate(url);
 
-    try {
-      final uri = Uri.parse(urlWithProtocol);
-      if (!uri.hasScheme || !uri.hasAuthority) {
-        return;
-      }
-    } catch (e) {
+    if (!validationResult.isValid) {
+      state = state.copyWith(error: validationResult.message);
       return;
     }
 
-    state = state.copyWith(url: urlWithProtocol);
+    final sanitizedUrl = validationResult.sanitizedUrl!;
+    state = state.copyWith(url: sanitizedUrl, error: null);
 
     // Fetch metadata
-    await _fetchMetadata(urlWithProtocol);
+    await _fetchMetadata(sanitizedUrl);
   }
 
   Future<void> _fetchMetadata(String url) async {
