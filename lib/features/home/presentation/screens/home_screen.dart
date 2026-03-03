@@ -22,14 +22,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   int _selectedNavIndex = 0;
   String _selectedFilter = 'recent';
   bool _isAddLinkPanelOpen = false;
+  bool _isSearchPanelOpen = false;
 
   final _urlController = TextEditingController();
   final _titleController = TextEditingController();
+  final _searchController = TextEditingController();
+
+  List<LinkModel> _searchResults = [];
+  bool _hasSearched = false;
+  bool _isSearching = false;
 
   @override
   void dispose() {
     _urlController.dispose();
     _titleController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -45,6 +52,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
             // Add Link Panel (sliding)
             _buildAddLinkPanel(),
+
+            // Search Panel (sliding)
+            _buildSearchPanel(),
 
             // Main Content
             Expanded(
@@ -102,17 +112,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         onTap: () {
           setState(() {
             _selectedNavIndex = index;
-            if (index == 1) {
+            if (index == 0) {
+              // Home
+              _isAddLinkPanelOpen = false;
+              _isSearchPanelOpen = false;
+            } else if (index == 1) {
+              // Add Link
+              _isSearchPanelOpen = false;
               _isAddLinkPanelOpen = !_isAddLinkPanelOpen;
               if (_isAddLinkPanelOpen) {
                 ref.read(linkFormProvider.notifier).reset();
                 _urlController.clear();
                 _titleController.clear();
               }
-            } else {
+            } else if (index == 2) {
+              // Search
               _isAddLinkPanelOpen = false;
-              if (index == 2) {
-                context.push('/search');
+              _isSearchPanelOpen = !_isSearchPanelOpen;
+              if (_isSearchPanelOpen) {
+                _searchController.clear();
+                _searchResults = [];
+                _hasSearched = false;
               }
             }
           });
@@ -198,6 +218,245 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             )
           : const SizedBox.shrink(),
+    );
+  }
+
+  // Sliding search panel
+  Widget _buildSearchPanel() {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeInOut,
+      width: _isSearchPanelOpen ? 360 : 0,
+      child: _isSearchPanelOpen
+          ? Container(
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                border: Border(
+                  right: BorderSide(color: AppColors.outlineVariant, width: 1),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Back button
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: IconButton(
+                      icon: const Icon(Icons.arrow_back),
+                      onPressed: () {
+                        setState(() {
+                          _isSearchPanelOpen = false;
+                          _selectedNavIndex = 0;
+                        });
+                      },
+                    ),
+                  ),
+
+                  // Title
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 24),
+                    child: Text(
+                      '검색',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.onSurface,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Search input
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceVariant,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          const Padding(
+                            padding: EdgeInsets.only(left: 12),
+                            child: Icon(Icons.search, size: 20, color: AppColors.onSurfaceVariant),
+                          ),
+                          Expanded(
+                            child: TextField(
+                              controller: _searchController,
+                              style: const TextStyle(fontSize: 14, color: AppColors.onSurface),
+                              decoration: const InputDecoration(
+                                hintText: '검색어 입력',
+                                hintStyle: TextStyle(color: AppColors.textHint),
+                                border: InputBorder.none,
+                                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                              ),
+                              textInputAction: TextInputAction.search,
+                              onChanged: (_) => setState(() {}),
+                              onSubmitted: (_) => _handleSearch(),
+                            ),
+                          ),
+                          if (_searchController.text.isNotEmpty)
+                            IconButton(
+                              icon: const Icon(Icons.clear, size: 20),
+                              onPressed: () {
+                                setState(() {
+                                  _searchController.clear();
+                                  _searchResults = [];
+                                  _hasSearched = false;
+                                });
+                              },
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Search results
+                  Expanded(
+                    child: _buildSearchResults(),
+                  ),
+                ],
+              ),
+            )
+          : const SizedBox.shrink(),
+    );
+  }
+
+  Future<void> _handleSearch() async {
+    final query = _searchController.text.trim();
+    if (query.isEmpty) return;
+
+    setState(() {
+      _isSearching = true;
+      _hasSearched = true;
+    });
+
+    final repository = ref.read(linkRepositoryProvider);
+    final results = await repository.searchLinks(query);
+
+    setState(() {
+      _searchResults = results;
+      _isSearching = false;
+    });
+  }
+
+  Widget _buildSearchResults() {
+    if (_isSearching) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (!_hasSearched) {
+      return const SizedBox();
+    }
+
+    if (_searchResults.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                '검색 결과가 없어요.',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: AppColors.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '키워드를 다시 한 번 확인해 주세요.',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: AppColors.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      itemCount: _searchResults.length,
+      itemBuilder: (context, index) {
+        final link = _searchResults[index];
+        return _buildSearchResultItem(link);
+      },
+    );
+  }
+
+  Widget _buildSearchResultItem(LinkModel link) {
+    return InkWell(
+      onTap: () async {
+        ref.read(linkActionsProvider.notifier).markAsRead(link.id);
+        final uri = Uri.parse(link.url);
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+        }
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Row(
+          children: [
+            // Thumbnail
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                width: 48,
+                height: 48,
+                color: AppColors.surfaceVariant,
+                child: link.thumbnailUrl != null && link.thumbnailUrl!.isNotEmpty
+                    ? Image.network(
+                        link.thumbnailUrl!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => const Icon(
+                          Icons.link,
+                          size: 20,
+                          color: AppColors.onSurfaceVariant,
+                        ),
+                      )
+                    : const Icon(
+                        Icons.link,
+                        size: 20,
+                        color: AppColors.onSurfaceVariant,
+                      ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            // Title and URL
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    link.title,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.onSurface,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    link.url,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.onSurfaceVariant,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
