@@ -8,6 +8,7 @@ class LinkModel {
   final String? thumbnailUrl;
   final String? label;
   final bool isRead;
+  final bool isFavorite;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -19,6 +20,7 @@ class LinkModel {
     this.thumbnailUrl,
     this.label,
     this.isRead = false,
+    this.isFavorite = false,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -33,6 +35,7 @@ class LinkModel {
       thumbnailUrl: data['thumbnailUrl'],
       label: data['label'],
       isRead: data['isRead'] ?? false,
+      isFavorite: data['isFavorite'] ?? false,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
@@ -46,6 +49,7 @@ class LinkModel {
       'thumbnailUrl': thumbnailUrl,
       'label': label,
       'isRead': isRead,
+      'isFavorite': isFavorite,
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
     };
@@ -59,6 +63,7 @@ class LinkModel {
     String? thumbnailUrl,
     String? label,
     bool? isRead,
+    bool? isFavorite,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -70,6 +75,7 @@ class LinkModel {
       thumbnailUrl: thumbnailUrl ?? this.thumbnailUrl,
       label: label ?? this.label,
       isRead: isRead ?? this.isRead,
+      isFavorite: isFavorite ?? this.isFavorite,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

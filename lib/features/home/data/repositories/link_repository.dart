@@ -93,6 +93,19 @@ class LinkRepository {
             snapshot.docs.map((doc) => LinkModel.fromFirestore(doc)).toList());
   }
 
+  /// Get favorite links
+  Stream<List<LinkModel>> getFavoriteLinksStream() {
+    if (_userId == null) return Stream.value([]);
+
+    return _linksCollection
+        .where('userId', isEqualTo: _userId)
+        .where('isFavorite', isEqualTo: true)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snapshot) =>
+            snapshot.docs.map((doc) => LinkModel.fromFirestore(doc)).toList());
+  }
+
   /// Get link by ID
   Future<LinkModel?> getLinkById(String linkId) async {
     final doc = await _linksCollection.doc(linkId).get();
@@ -190,6 +203,17 @@ class LinkRepository {
   Future<void> markAsRead(String linkId) async {
     await _linksCollection.doc(linkId).update({
       'isRead': true,
+      'updatedAt': Timestamp.fromDate(DateTime.now()),
+    });
+  }
+
+  /// Toggle favorite status
+  Future<void> toggleFavorite(String linkId) async {
+    final link = await getLinkById(linkId);
+    if (link == null) return;
+
+    await _linksCollection.doc(linkId).update({
+      'isFavorite': !link.isFavorite,
       'updatedAt': Timestamp.fromDate(DateTime.now()),
     });
   }

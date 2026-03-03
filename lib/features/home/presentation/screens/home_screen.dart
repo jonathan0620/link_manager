@@ -112,6 +112,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   '안 읽은 링크',
                   unreadCount,
                 ),
+                const SizedBox(height: 8),
+                _buildFavoriteFilterButton(),
               ],
             ),
           ),
@@ -245,6 +247,51 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
+  Widget _buildFavoriteFilterButton() {
+    final favoriteLinksAsync = ref.watch(favoriteLinksStreamProvider);
+    final favoriteCount = favoriteLinksAsync.valueOrNull?.length ?? 0;
+    final isSelected = _selectedFilter == 'favorite';
+
+    return InkWell(
+      onTap: () {
+        setState(() => _selectedFilter = 'favorite');
+        ref.read(selectedCategoryProvider.notifier).state = '__favorite__';
+      },
+      borderRadius: BorderRadius.circular(24),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.primary : Colors.transparent,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: isSelected ? AppColors.primary : AppColors.primary,
+            width: 1.5,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.star,
+              size: 16,
+              color: isSelected ? Colors.white : AppColors.primary,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              '즐겨찾기 ($favoriteCount)',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: isSelected ? Colors.white : AppColors.primary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildLabelItem(String label, int count) {
     final emoji = _getLabelEmoji(label);
 
@@ -305,6 +352,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       linksAsync = ref.watch(recentLinksStreamProvider);
     } else if (selectedCategory == '__unread__') {
       linksAsync = ref.watch(unreadLinksStreamProvider);
+    } else if (selectedCategory == '__favorite__') {
+      linksAsync = ref.watch(favoriteLinksStreamProvider);
     } else {
       linksAsync = ref.watch(linksByLabelStreamProvider(selectedCategory));
     }
@@ -492,19 +541,30 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
               // Action Buttons
               Column(
-                mainAxisAlignment: MainAxisAlignment.end,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
+                  IconButton(
+                    icon: Icon(
+                      link.isFavorite ? Icons.star : Icons.star_outline,
+                      size: 20,
+                    ),
+                    color: link.isFavorite ? Colors.amber : AppColors.onSurfaceVariant,
+                    onPressed: () {
+                      ref.read(linkActionsProvider.notifier).toggleFavorite(link.id);
+                    },
+                    tooltip: '즐겨찾기',
+                  ),
                   IconButton(
                     icon: const Icon(Icons.edit_outlined, size: 20),
                     color: AppColors.onSurfaceVariant,
                     onPressed: () => context.push('/edit-link/${link.id}'),
+                    tooltip: '수정',
                   ),
                   IconButton(
-                    icon: const Icon(Icons.bookmark_outline, size: 20),
+                    icon: const Icon(Icons.delete_outline, size: 20),
                     color: AppColors.onSurfaceVariant,
-                    onPressed: () {
-                      // TODO: Bookmark functionality
-                    },
+                    onPressed: () => _showDeleteDialog(link),
+                    tooltip: '삭제',
                   ),
                 ],
               ),
@@ -586,6 +646,46 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               }
             },
             child: const Text('로그아웃'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeleteDialog(LinkModel link) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('링크 삭제'),
+        content: Text('\'${link.title}\'을(를) 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('취소'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              final success = await ref.read(linkActionsProvider.notifier).deleteLink(link.id);
+              if (success && mounted) {
+                ScaffoldMessenger.of(this.context).showSnackBar(
+                  SnackBar(
+                    content: const Row(
+                      children: [
+                        Icon(Icons.check_circle, color: Colors.white),
+                        SizedBox(width: 8),
+                        Text('링크가 삭제되었습니다.'),
+                      ],
+                    ),
+                    backgroundColor: AppColors.onBackground,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                );
+              }
+            },
+            style: TextButton.styleFrom(foregroundColor: AppColors.error),
+            child: const Text('삭제'),
           ),
         ],
       ),

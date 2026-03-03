@@ -32,6 +32,12 @@ final linksByLabelStreamProvider =
   return repository.getLinksByLabelStream(label);
 });
 
+/// Favorite links stream provider
+final favoriteLinksStreamProvider = StreamProvider<List<LinkModel>>((ref) {
+  final repository = ref.watch(linkRepositoryProvider);
+  return repository.getFavoriteLinksStream();
+});
+
 /// Single link provider
 final linkProvider = FutureProvider.family<LinkModel?, String>((ref, linkId) {
   final repository = ref.watch(linkRepositoryProvider);
@@ -130,6 +136,14 @@ class LinkActionsNotifier extends StateNotifier<AsyncValue<void>> {
       await _repository.markAsRead(linkId);
     } catch (e) {
       // Silent fail for mark as read
+    }
+  }
+
+  Future<void> toggleFavorite(String linkId) async {
+    try {
+      await _repository.toggleFavorite(linkId);
+    } catch (e) {
+      // Silent fail for toggle favorite
     }
   }
 }
