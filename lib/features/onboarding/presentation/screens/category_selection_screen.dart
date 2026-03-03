@@ -18,20 +18,30 @@ class _CategorySelectionScreenState
   final Set<String> _selectedCategories = {};
   bool _isLoading = false;
 
-  static const List<_CategoryItem> _categories = [
-    _CategoryItem(id: '요리', emoji: '🍳'),
-    _CategoryItem(id: '여행', emoji: '✈️'),
-    _CategoryItem(id: '게임', emoji: '🎮'),
-    _CategoryItem(id: '취미', emoji: '🎨'),
-    _CategoryItem(id: '디자인', emoji: '🎯'),
-    _CategoryItem(id: '업무', emoji: '💼'),
-    _CategoryItem(id: '맛집', emoji: '🍽️'),
-    _CategoryItem(id: '쇼핑', emoji: '🛒'),
-    _CategoryItem(id: '개발', emoji: '💻'),
-    _CategoryItem(id: '운동·스포츠', emoji: '🏃'),
-    _CategoryItem(id: '기사·글', emoji: '📰'),
-    _CategoryItem(id: '주식', emoji: '📈'),
-    _CategoryItem(id: '영상·영화', emoji: '🎬'),
+  // Categories organized in rows like Figma design
+  static const List<List<_CategoryItem>> _categoryRows = [
+    // Row 1: 5 items
+    [
+      _CategoryItem(id: '요리', emoji: '🍳'),
+      _CategoryItem(id: '여행', emoji: '✈️'),
+      _CategoryItem(id: '게임', emoji: '🎮'),
+      _CategoryItem(id: '취미', emoji: '🎨'),
+      _CategoryItem(id: '디자인', emoji: '🎯'),
+    ],
+    // Row 2: 4 items
+    [
+      _CategoryItem(id: '업무', emoji: '💼'),
+      _CategoryItem(id: '맛집', emoji: '🍲'),
+      _CategoryItem(id: '쇼핑', emoji: '🛒'),
+      _CategoryItem(id: '개발', emoji: '💻'),
+    ],
+    // Row 3: 4 items
+    [
+      _CategoryItem(id: '운동·스포츠', emoji: '🏃'),
+      _CategoryItem(id: '기사·글', emoji: '📰'),
+      _CategoryItem(id: '주식', emoji: '📈'),
+      _CategoryItem(id: '영상·영화', emoji: '🎬'),
+    ],
   ];
 
   void _toggleCategory(String categoryId) {
@@ -62,16 +72,20 @@ class _CategorySelectionScreenState
 
   @override
   Widget build(BuildContext context) {
+    final hasSelection = _selectedCategories.isNotEmpty;
+
     return Scaffold(
       backgroundColor: AppColors.surface,
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 600),
+            constraints: const BoxConstraints(maxWidth: 700),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 48),
               child: Column(
                 children: [
+                  const Spacer(flex: 1),
+
                   // Logo
                   const ZoopLogo(size: 48),
                   const SizedBox(height: 32),
@@ -81,7 +95,7 @@ class _CategorySelectionScreenState
                     '어떤 종류의 링크를 저장하시나요?',
                     style: TextStyle(
                       fontSize: 18,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w500,
                       color: AppColors.onSurface,
                     ),
                     textAlign: TextAlign.center,
@@ -97,43 +111,46 @@ class _CategorySelectionScreenState
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 48),
 
-                  // Category Chips
-                  Expanded(
-                    child: SingleChildScrollView(
-                      child: Wrap(
-                        spacing: 12,
-                        runSpacing: 12,
-                        alignment: WrapAlignment.center,
-                        children: _categories.map((category) {
-                          final isSelected =
-                              _selectedCategories.contains(category.id);
-                          return _CategoryChip(
-                            category: category,
-                            isSelected: isSelected,
-                            onTap: () => _toggleCategory(category.id),
-                          );
-                        }).toList(),
-                      ),
+                  // Category Chips - organized in rows
+                  ..._categoryRows.map((row) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      alignment: WrapAlignment.center,
+                      children: row.map((category) {
+                        final isSelected =
+                            _selectedCategories.contains(category.id);
+                        return _CategoryChip(
+                          category: category,
+                          isSelected: isSelected,
+                          onTap: () => _toggleCategory(category.id),
+                        );
+                      }).toList(),
                     ),
-                  ),
+                  )),
 
-                  const SizedBox(height: 32),
+                  const Spacer(flex: 2),
 
                   // Complete Button
                   SizedBox(
-                    width: double.infinity,
+                    width: 300,
                     height: 52,
                     child: ElevatedButton(
                       onPressed: _isLoading ? null : _handleComplete,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.buttonDisabled,
-                        foregroundColor: AppColors.buttonTextDisabled,
+                        backgroundColor: hasSelection
+                            ? AppColors.primary
+                            : AppColors.buttonDisabled,
+                        foregroundColor: hasSelection
+                            ? Colors.white
+                            : AppColors.buttonTextDisabled,
                         disabledBackgroundColor: AppColors.buttonDisabled,
                         elevation: 0,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(30),
                         ),
                       ),
                       child: _isLoading
@@ -142,7 +159,7 @@ class _CategorySelectionScreenState
                               height: 24,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                color: AppColors.buttonTextDisabled,
+                                color: Colors.white,
                               ),
                             )
                           : const Text(
@@ -154,6 +171,8 @@ class _CategorySelectionScreenState
                             ),
                     ),
                   ),
+
+                  const SizedBox(height: 48),
                 ],
               ),
             ),
@@ -189,14 +208,14 @@ class _CategoryChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: isSelected ? AppColors.primary.withOpacity(0.1) : AppColors.surface,
-      borderRadius: BorderRadius.circular(24),
+      borderRadius: BorderRadius.circular(30),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(30),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(30),
             border: Border.all(
               color: isSelected ? AppColors.primary : AppColors.outlineVariant,
               width: isSelected ? 2 : 1,
@@ -207,14 +226,14 @@ class _CategoryChip extends StatelessWidget {
             children: [
               Text(
                 category.emoji,
-                style: const TextStyle(fontSize: 20),
+                style: const TextStyle(fontSize: 18),
               ),
               const SizedBox(width: 8),
               Text(
                 category.id,
                 style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                  fontSize: 14,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                   color: isSelected ? AppColors.primary : AppColors.onSurface,
                 ),
               ),
