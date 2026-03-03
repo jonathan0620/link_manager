@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_colors.dart';
@@ -19,22 +18,14 @@ class FindPasswordScreen extends ConsumerStatefulWidget {
 
 class _FindPasswordScreenState extends ConsumerState<FindPasswordScreen> {
   final _emailController = TextEditingController();
-  final _codeController = TextEditingController();
-  final _newPasswordController = TextEditingController();
-  final _confirmPasswordController = TextEditingController();
 
   bool _isLoading = false;
-  int _currentStep = 0; // 0: email, 1: verify, 2: new password, 3: complete
+  bool _emailSent = false;
   ValidationResult? _emailValidation;
-  ValidationResult? _passwordValidation;
-  ValidationResult? _confirmPasswordValidation;
 
   @override
   void dispose() {
     _emailController.dispose();
-    _codeController.dispose();
-    _newPasswordController.dispose();
-    _confirmPasswordController.dispose();
     super.dispose();
   }
 
@@ -44,28 +35,7 @@ class _FindPasswordScreenState extends ConsumerState<FindPasswordScreen> {
     });
   }
 
-  void _validatePassword(String value) {
-    setState(() {
-      _passwordValidation = Validators.validatePassword(value);
-      if (_confirmPasswordController.text.isNotEmpty) {
-        _confirmPasswordValidation = Validators.validatePasswordConfirm(
-          value,
-          _confirmPasswordController.text,
-        );
-      }
-    });
-  }
-
-  void _validateConfirmPassword(String value) {
-    setState(() {
-      _confirmPasswordValidation = Validators.validatePasswordConfirm(
-        _newPasswordController.text,
-        value,
-      );
-    });
-  }
-
-  Future<void> _handleSendCode() async {
+  Future<void> _handleSendResetLink() async {
     if (_emailValidation?.isValid != true) {
       ToastHelper.showError(AppStrings.emailInvalid);
       return;
@@ -73,70 +43,26 @@ class _FindPasswordScreenState extends ConsumerState<FindPasswordScreen> {
 
     setState(() => _isLoading = true);
 
-    final success = await ref.read(authNotifierProvider.notifier).sendVerificationCode(
-          email: _emailController.text.trim(),
-          purpose: 'find_password',
-        );
+    try {
+      await ref.read(authNotifierProvider.notifier).resetPassword(
+            _emailController.text.trim(),
+          );
 
-    setState(() {
-      _isLoading = false;
-      if (success) _currentStep = 1;
-    });
+      setState(() {
+        _isLoading = false;
+        _emailSent = true;
+      });
 
-    if (success) {
-      ToastHelper.showSuccess(AppStrings.verificationCodeSent);
-    } else {
-      ToastHelper.showError(AppStrings.errorGeneric);
-    }
-  }
+      ToastHelper.showSuccess('비밀번호 재설정 링크가 발송되었습니다.');
+    } catch (e) {
+      setState(() => _isLoading = false);
 
-  Future<void> _handleVerify() async {
-    final code = _codeController.text.trim();
-
-    if (code.length != 6) {
-      ToastHelper.showError('6자리 인증번호를 입력해 주세요.');
-      return;
-    }
-
-    setState(() => _isLoading = true);
-
-    final isCodeValid = await ref.read(authNotifierProvider.notifier).verifyCode(
-          email: _emailController.text.trim(),
-          code: code,
-        );
-
-    setState(() {
-      _isLoading = false;
-      if (isCodeValid) _currentStep = 2;
-    });
-
-    if (!isCodeValid) {
-      ToastHelper.showError(AppStrings.verificationCodeInvalid);
-    }
-  }
-
-  Future<void> _handleResetPassword() async {
-    if (_passwordValidation?.isValid != true ||
-        _confirmPasswordValidation?.isValid != true) {
-      ToastHelper.showError('비밀번호를 확인해 주세요.');
-      return;
-    }
-
-    setState(() => _isLoading = true);
-
-    final success = await ref.read(authNotifierProvider.notifier).resetPassword(
-          _emailController.text.trim(),
-        );
-
-    setState(() {
-      _isLoading = false;
-      if (success) _currentStep = 3;
-    });
-
-    if (success) {
-      ToastHelper.showSuccess('비밀번호가 재설정되었습니다.');
-    } else {
-      ToastHelper.showError(AppStrings.errorGeneric);
+      // Handle specific Firebase errors
+      String errorMessage = '이메일 발송에 실패했습니다.';
+      if (e.toString().contains('user-not-found')) {
+        errorMessage = '등록되지 않은 이메일입니다.';
+      }
+      ToastHelper.showError(errorMessage);
     }
   }
 
@@ -155,7 +81,7 @@ class _FindPasswordScreenState extends ConsumerState<FindPasswordScreen> {
             padding: const EdgeInsets.all(24),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 400),
-              child: _buildCurrentStep(),
+              child: _emailSent ? _buildSuccessStep() : _buildEmailStep(),
             ),
           ),
         ),
@@ -163,33 +89,36 @@ class _FindPasswordScreenState extends ConsumerState<FindPasswordScreen> {
     );
   }
 
-  Widget _buildCurrentStep() {
-    switch (_currentStep) {
-      case 0:
-        return _buildEmailStep();
-      case 1:
-        return _buildVerifyStep();
-      case 2:
-        return _buildNewPasswordStep();
-      case 3:
-        return _buildCompleteStep();
-      default:
-        return _buildEmailStep();
-    }
-  }
-
   Widget _buildEmailStep() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text(
-          '가입 시 등록한 이메일을 입력해 주세요.',
-          style: TextStyle(
-            fontSize: 16,
-            color: AppColors.onSurfaceVariant,
-          ),
+        const Icon(
+          Icons.lock_reset,
+          size: 64,
+          color: AppColors.primary,
         ),
         const SizedBox(height: 24),
+        const Text(
+          '비밀번호를 잊으셨나요?',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+            color: AppColors.onBackground,
+          ),
+        ),
+        const SizedBox(height: 12),
+        const Text(
+          '가입 시 등록한 이메일을 입력하시면\n비밀번호 재설정 링크를 보내드립니다.',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 14,
+            color: AppColors.onSurfaceVariant,
+            height: 1.5,
+          ),
+        ),
+        const SizedBox(height: 32),
         CustomTextField(
           label: AppStrings.email,
           hint: 'example@email.com',
@@ -204,149 +133,61 @@ class _FindPasswordScreenState extends ConsumerState<FindPasswordScreen> {
         ),
         const SizedBox(height: 24),
         CustomButton(
-          text: AppStrings.sendVerificationCode,
+          text: '재설정 링크 보내기',
           onPressed:
-              _emailValidation?.isValid == true && !_isLoading ? _handleSendCode : null,
-          isLoading: _isLoading,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildVerifyStep() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(
-          '${_emailController.text}로\n인증번호가 발송되었습니다.',
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontSize: 16,
-            color: AppColors.onSurfaceVariant,
-          ),
-        ),
-        const SizedBox(height: 24),
-        CustomTextField(
-          label: AppStrings.verificationCode,
-          hint: '6자리 인증번호',
-          controller: _codeController,
-          keyboardType: TextInputType.number,
-          textInputAction: TextInputAction.done,
-          maxLength: 6,
-          inputFormatters: [
-            FilteringTextInputFormatter.digitsOnly,
-          ],
-          prefixIcon: const Icon(Icons.pin_outlined),
-        ),
-        const SizedBox(height: 24),
-        CustomButton(
-          text: AppStrings.verify,
-          onPressed: _isLoading ? null : _handleVerify,
+              _emailValidation?.isValid == true && !_isLoading ? _handleSendResetLink : null,
           isLoading: _isLoading,
         ),
         const SizedBox(height: 16),
         CustomButton(
-          text: '인증번호 재발송',
+          text: '로그인으로 돌아가기',
           type: ButtonType.text,
-          onPressed: _handleSendCode,
+          onPressed: () => context.go('/login'),
         ),
       ],
     );
   }
 
-  Widget _buildNewPasswordStep() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        const Text(
-          '새로운 비밀번호를 입력해 주세요.',
-          style: TextStyle(
-            fontSize: 16,
-            color: AppColors.onSurfaceVariant,
-          ),
-        ),
-        const SizedBox(height: 24),
-        CustomTextField(
-          label: '새 비밀번호',
-          hint: '영문 숫자 조합 20자 이내',
-          controller: _newPasswordController,
-          obscureText: true,
-          textInputAction: TextInputAction.next,
-          maxLength: 20,
-          prefixIcon: const Icon(Icons.lock_outline),
-          onChanged: _validatePassword,
-          isValid: _passwordValidation?.isValid == true,
-          errorText: _passwordValidation?.isValid == false
-              ? _passwordValidation!.message
-              : null,
-          helperText: _passwordValidation?.isValid == true
-              ? _passwordValidation!.message
-              : null,
-        ),
-        const SizedBox(height: 16),
-        CustomTextField(
-          label: '새 비밀번호 확인',
-          hint: '비밀번호를 다시 입력하세요',
-          controller: _confirmPasswordController,
-          obscureText: true,
-          textInputAction: TextInputAction.done,
-          maxLength: 20,
-          prefixIcon: const Icon(Icons.lock_outline),
-          onChanged: _validateConfirmPassword,
-          isValid: _confirmPasswordValidation?.isValid == true,
-          errorText: _confirmPasswordValidation?.isValid == false
-              ? _confirmPasswordValidation!.message
-              : null,
-          helperText: _confirmPasswordValidation?.isValid == true
-              ? _confirmPasswordValidation!.message
-              : null,
-        ),
-        const SizedBox(height: 24),
-        CustomButton(
-          text: '비밀번호 변경',
-          onPressed: _passwordValidation?.isValid == true &&
-                  _confirmPasswordValidation?.isValid == true &&
-                  !_isLoading
-              ? _handleResetPassword
-              : null,
-          isLoading: _isLoading,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCompleteStep() {
+  Widget _buildSuccessStep() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const Icon(
-          Icons.check_circle_outline,
+          Icons.mark_email_read_outlined,
           size: 64,
           color: AppColors.success,
         ),
         const SizedBox(height: 24),
         const Text(
-          '비밀번호가 변경되었습니다.',
+          '이메일을 확인해 주세요!',
           textAlign: TextAlign.center,
           style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w500,
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
             color: AppColors.onBackground,
           ),
         ),
-        const SizedBox(height: 8),
-        const Text(
-          '새로운 비밀번호로 로그인해 주세요.',
+        const SizedBox(height: 12),
+        Text(
+          '${_emailController.text}로\n비밀번호 재설정 링크를 보냈습니다.\n\n이메일의 링크를 클릭하여\n새 비밀번호를 설정해 주세요.',
           textAlign: TextAlign.center,
-          style: TextStyle(
+          style: const TextStyle(
             fontSize: 14,
             color: AppColors.onSurfaceVariant,
+            height: 1.5,
           ),
         ),
         const SizedBox(height: 32),
         CustomButton(
-          text: AppStrings.login,
+          text: '로그인으로 돌아가기',
           onPressed: () => context.go('/login'),
+        ),
+        const SizedBox(height: 16),
+        CustomButton(
+          text: '이메일 다시 보내기',
+          type: ButtonType.secondary,
+          onPressed: _isLoading ? null : _handleSendResetLink,
+          isLoading: _isLoading,
         ),
       ],
     );

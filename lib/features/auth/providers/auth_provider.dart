@@ -186,14 +186,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  Future<bool> resetPassword(String email) async {
-    try {
-      await _repository.resetPassword(email);
-      return true;
-    } catch (e) {
-      state = state.copyWith(errorMessage: e.toString());
-      return false;
-    }
+  Future<void> resetPassword(String email) async {
+    await _repository.resetPassword(email);
   }
 
   Future<bool> isUsernameAvailable(String username) async {
