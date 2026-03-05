@@ -44,21 +44,46 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Row(
+        child: Column(
           children: [
-            // 1. Icon Sidebar (thin, always visible)
-            _buildIconSidebar(),
+            // Top bar with ZOOP logo
+            _buildTopBar(),
 
-            // 2. Sliding Panel (Home/Add Link/Search)
-            _buildSlidingPanel(),
-
-            // 3. Main Content (always visible - links grid)
+            // Main area: Icon sidebar + Panel + Content
             Expanded(
-              child: _buildMainContent(),
+              child: Row(
+                children: [
+                  // 1. Icon Sidebar (thin, always visible)
+                  _buildIconSidebar(),
+
+                  // 2. Sliding Panel (Home/Add Link/Search)
+                  _buildSlidingPanel(),
+
+                  // 3. Main Content (always visible - links grid)
+                  Expanded(
+                    child: _buildMainContent(),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  // ============ TOP BAR ============
+  Widget _buildTopBar() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border(
+          bottom: BorderSide(color: AppColors.outlineVariant, width: 1),
+        ),
+      ),
+      child: const ZoopLogo(size: 24),
     );
   }
 
@@ -75,8 +100,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       child: Column(
         children: [
           const SizedBox(height: 16),
-          const ZoopLogo(size: 20),
-          const SizedBox(height: 24),
 
           _buildNavIcon(0, Icons.home_rounded),
           _buildNavIcon(1, Icons.link_rounded),
