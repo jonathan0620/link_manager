@@ -50,6 +50,20 @@ final uniqueLabelsProvider = FutureProvider<List<String>>((ref) {
   return repository.getUniqueLabels();
 });
 
+/// Label counts provider - returns Map<label, count>
+final labelCountsProvider = StreamProvider<Map<String, int>>((ref) {
+  final repository = ref.watch(linkRepositoryProvider);
+  return repository.getLinksStream().map((links) {
+    final counts = <String, int>{};
+    for (final link in links) {
+      if (link.label != null && link.label!.isNotEmpty) {
+        counts[link.label!] = (counts[link.label!] ?? 0) + 1;
+      }
+    }
+    return counts;
+  });
+});
+
 /// Link counts provider
 final linkCountsProvider = FutureProvider<LinkCounts>((ref) async {
   final repository = ref.watch(linkRepositoryProvider);

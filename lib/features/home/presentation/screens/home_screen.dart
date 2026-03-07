@@ -236,10 +236,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final unreadLinksAsync = ref.watch(unreadLinksStreamProvider);
     final favoriteLinksAsync = ref.watch(favoriteLinksStreamProvider);
     final uniqueLabelsAsync = ref.watch(uniqueLabelsProvider);
+    final labelCountsAsync = ref.watch(labelCountsProvider);
 
     final recentCount = recentLinksAsync.valueOrNull?.length ?? 0;
     final unreadCount = unreadLinksAsync.valueOrNull?.length ?? 0;
     final favoriteCount = favoriteLinksAsync.valueOrNull?.length ?? 0;
+    final labelCounts = labelCountsAsync.valueOrNull ?? {};
 
     return Container(
       color: AppColors.surface,
@@ -290,7 +292,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     }
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: labels.map((label) => _buildLabelItem(label, 0)).toList(),
+                      children: labels.map((label) => _buildLabelItem(label, labelCounts[label] ?? 0)).toList(),
                     );
                   },
                   loading: () => const SizedBox(),
@@ -391,6 +393,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   Widget _buildLabelItem(String label, int count) {
     final emoji = _getLabelEmoji(label);
+    final isSelected = ref.watch(selectedCategoryProvider) == label;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
@@ -406,9 +409,30 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             children: [
               Text(emoji, style: const TextStyle(fontSize: 18)),
               const SizedBox(width: 8),
-              Text(
-                label,
-                style: const TextStyle(fontSize: 14, color: AppColors.onSurface),
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: isSelected ? AppColors.primary : AppColors.onSurface,
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: isSelected ? AppColors.primary.withOpacity(0.1) : AppColors.surfaceVariant,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '$count',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: isSelected ? AppColors.primary : AppColors.onSurfaceVariant,
+                  ),
+                ),
               ),
             ],
           ),
@@ -1053,20 +1077,32 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
           const SizedBox(height: 20),
           Expanded(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final crossAxisCount = constraints.maxWidth > 700 ? 2 : 1;
-                return GridView.builder(
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: crossAxisCount,
-                    crossAxisSpacing: 16,
-                    mainAxisSpacing: 8,
-                    childAspectRatio: crossAxisCount == 2 ? 1.8 : 2.2,
-                  ),
-                  itemCount: links.length,
-                  itemBuilder: (context, index) => _buildLinkCard(links[index]),
-                );
+            child: RefreshIndicator(
+              onRefresh: () async {
+                // Invalidate providers to refresh data
+                ref.invalidate(recentLinksStreamProvider);
+                ref.invalidate(unreadLinksStreamProvider);
+                ref.invalidate(favoriteLinksStreamProvider);
+                ref.invalidate(uniqueLabelsProvider);
+                await Future.delayed(const Duration(milliseconds: 500));
               },
+              color: AppColors.primary,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final crossAxisCount = constraints.maxWidth > 700 ? 2 : 1;
+                  return GridView.builder(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: crossAxisCount,
+                      crossAxisSpacing: 16,
+                      mainAxisSpacing: 8,
+                      childAspectRatio: crossAxisCount == 2 ? 1.8 : 2.2,
+                    ),
+                    itemCount: links.length,
+                    itemBuilder: (context, index) => _buildLinkCard(links[index]),
+                  );
+                },
+              ),
             ),
           ),
         ],
