@@ -1114,70 +1114,96 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget _buildLinkCard(LinkModel link) {
     final dateStr = _formatDate(link.createdAt);
     final isEditing = _editingLink?.id == link.id;
+    final hasSummary = link.summary != null && link.summary!.isNotEmpty;
 
     return Column(
       children: [
         // Link card
-        Container(
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(16),
-            border: isEditing ? Border.all(color: AppColors.primary, width: 2) : null,
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 2))],
-          ),
-          child: InkWell(
-            onTap: () async {
-              ref.read(linkActionsProvider.notifier).markAsRead(link.id);
-              final uri = Uri.parse(link.url);
-              if (await canLaunchUrl(uri)) {
-                await launchUrl(uri, mode: LaunchMode.externalApplication);
-              }
-            },
-            borderRadius: BorderRadius.circular(16),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Left content: title, url, date
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(link.title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.onSurface), maxLines: 1, overflow: TextOverflow.ellipsis),
-                        const SizedBox(height: 4),
-                        Text(link.url, style: TextStyle(fontSize: 12, color: AppColors.onSurfaceVariant), maxLines: 2, overflow: TextOverflow.ellipsis),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Text(dateStr, style: TextStyle(fontSize: 11, color: AppColors.onSurfaceVariant)),
-                            if (!link.isRead) ...[
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
-                                child: const Text('안 읽음', style: TextStyle(fontSize: 10, color: AppColors.primary)),
-                              ),
+        Expanded(
+          child: Container(
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: isEditing ? Border.all(color: AppColors.primary, width: 2) : null,
+              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 2))],
+            ),
+            child: InkWell(
+              onTap: () async {
+                ref.read(linkActionsProvider.notifier).markAsRead(link.id);
+                final uri = Uri.parse(link.url);
+                if (await canLaunchUrl(uri)) {
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                }
+              },
+              borderRadius: BorderRadius.circular(16),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Left content: title, summary/url, date
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(link.title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.onSurface), maxLines: 1, overflow: TextOverflow.ellipsis),
+                          const SizedBox(height: 4),
+                          // 요약이 있으면 요약 표시, 없으면 URL 표시
+                          Expanded(
+                            child: hasSummary
+                                ? Text(
+                                    link.summary!,
+                                    style: TextStyle(fontSize: 12, color: AppColors.onSurfaceVariant, height: 1.4),
+                                    maxLines: 3,
+                                    overflow: TextOverflow.ellipsis,
+                                  )
+                                : Text(
+                                    link.url,
+                                    style: TextStyle(fontSize: 12, color: AppColors.onSurfaceVariant),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Text(dateStr, style: TextStyle(fontSize: 11, color: AppColors.onSurfaceVariant)),
+                              if (!link.isRead) ...[
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
+                                  child: const Text('안 읽음', style: TextStyle(fontSize: 10, color: AppColors.primary)),
+                                ),
+                              ],
+                              if (hasSummary) ...[
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(color: Colors.purple.withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
+                                  child: const Text('AI 요약', style: TextStyle(fontSize: 10, color: Colors.purple)),
+                                ),
+                              ],
                             ],
-                          ],
-                        ),
-                      ],
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  // Thumbnail
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Container(
-                      width: 100,
-                      height: 80,
-                      color: AppColors.surfaceVariant,
-                      child: link.thumbnailUrl != null && link.thumbnailUrl!.isNotEmpty
-                          ? Image.network(link.thumbnailUrl!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => _buildPlaceholderImage())
-                          : _buildPlaceholderImage(),
+                    const SizedBox(width: 12),
+                    // Thumbnail
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        width: 100,
+                        height: 80,
+                        color: AppColors.surfaceVariant,
+                        child: link.thumbnailUrl != null && link.thumbnailUrl!.isNotEmpty
+                            ? Image.network(link.thumbnailUrl!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => _buildPlaceholderImage())
+                            : _buildPlaceholderImage(),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),

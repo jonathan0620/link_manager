@@ -125,6 +125,7 @@ class LinkRepository {
     required String title,
     String? thumbnailUrl,
     String? label,
+    String? summary,
   }) async {
     final userId = _userId;
     debugPrint('[LinkRepository] addLink called, userId: $userId, url: $url');
@@ -140,6 +141,7 @@ class LinkRepository {
       title: title.isEmpty ? '제목 없음' : title,
       thumbnailUrl: thumbnailUrl,
       label: label,
+      summary: summary,
       isRead: false,
       createdAt: now,
       updatedAt: now,
@@ -155,6 +157,14 @@ class LinkRepository {
     }
 
     return link;
+  }
+
+  /// Update link summary
+  Future<void> updateSummary(String linkId, String summary) async {
+    await _linksCollection.doc(linkId).update({
+      'summary': summary,
+      'updatedAt': Timestamp.fromDate(DateTime.now()),
+    });
   }
 
   /// Update link

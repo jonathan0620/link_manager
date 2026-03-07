@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/services/ai_service.dart';
 import '../data/models/link_model.dart';
 import '../data/repositories/link_repository.dart';
 
@@ -93,6 +94,7 @@ class LinkActionsNotifier extends StateNotifier<AsyncValue<void>> {
   }) async {
     state = const AsyncValue.loading();
     try {
+      // 1. 먼저 링크 저장 (빠른 UX를 위해)
       final link = await _repository.addLink(
         url: url,
         title: title,
@@ -100,10 +102,27 @@ class LinkActionsNotifier extends StateNotifier<AsyncValue<void>> {
         label: label,
       );
       state = const AsyncValue.data(null);
+
+      // 2. 백그라운드에서 AI 요약 생성
+      _generateSummaryInBackground(link.id, url);
+
       return link;
     } catch (e, st) {
       state = AsyncValue.error(e, st);
       return null;
+    }
+  }
+
+  /// 백그라운드에서 AI 요약 생성
+  Future<void> _generateSummaryInBackground(String linkId, String url) async {
+    try {
+      final summary = await AIService.summarizeUrl(url);
+      if (summary != null && summary.isNotEmpty) {
+        await _repository.updateSummary(linkId, summary);
+      }
+    } catch (e) {
+      // 요약 실패해도 링크는 이미 저장됨
+      print('AI 요약 생성 실패: $e');
     }
   }
 
