@@ -111,6 +111,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           bottom: BorderSide(color: AppColors.outlineVariant, width: 1),
         ),
       ),
+      alignment: Alignment.centerLeft,
       child: const ZoopLogo(size: 24),
     );
   }
