@@ -660,7 +660,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     ref.read(linkFormProvider.notifier).setLoading(false);
 
     if (link != null && mounted) {
-      _showSnackBar('링크가 저장되었습니다!');
+      _showSnackBar('링크 ZOOP 완료!');
       setState(() => _selectedNavIndex = 0);
       _urlController.clear();
       _titleController.clear();
@@ -792,7 +792,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     ref.read(linkFormProvider.notifier).setLoading(false);
 
     if (success && mounted) {
-      _showSnackBar('링크가 수정되었습니다!');
+      _showSnackBar('ZOOP한 링크 수정 완료!');
       setState(() {
         _selectedNavIndex = 0;
         _editingLink = null;
@@ -831,7 +831,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       final success = await ref.read(linkActionsProvider.notifier).deleteLink(_editingLink!.id);
 
       if (success && mounted) {
-        _showSnackBar('링크가 삭제되었습니다.');
+        _showSnackBar('ZOOP한 링크 삭제 완료!');
         setState(() {
           _selectedNavIndex = 0;
           _editingLink = null;
@@ -1157,6 +1157,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
               const SizedBox(width: 8),
               _buildCircleActionButton(
+                icon: Icons.copy_outlined,
+                onTap: () async {
+                  final success = await ShareHelper.copyToClipboard(link.url);
+                  if (success && mounted) _showSnackBar('링크가 복사되었습니다!');
+                },
+              ),
+              const SizedBox(width: 8),
+              _buildCircleActionButton(
                 icon: link.isFavorite ? Icons.bookmark : Icons.bookmark_outline,
                 color: link.isFavorite ? AppColors.primary : null,
                 onTap: () async {
@@ -1357,7 +1365,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             onPressed: () async {
               Navigator.of(context).pop();
               await ref.read(linkActionsProvider.notifier).deleteLink(link.id);
-              if (mounted) _showSnackBar('링크가 삭제되었습니다.');
+              if (mounted) _showSnackBar('ZOOP한 링크 삭제 완료!');
             },
             style: TextButton.styleFrom(foregroundColor: AppColors.error),
             child: const Text('삭제'),
