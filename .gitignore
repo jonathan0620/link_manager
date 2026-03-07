@@ -112,3 +112,6 @@ coverage/
 *.p12
 google-services.json
 GoogleService-Info.plist
+
+# API Keys (민감 정보)
+**/api_keys.dart

@@ -1,9 +1,10 @@
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:http/http.dart' as http;
 import 'package:html/parser.dart' as html_parser;
+import '../config/api_keys.dart';
 
 class AIService {
-  static const String _apiKey = 'YOUR_API_KEY_HERE';
+  static const String _apiKey = ApiKeys.geminiApiKey;
 
   static GenerativeModel? _model;
 
