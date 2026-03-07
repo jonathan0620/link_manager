@@ -1060,8 +1060,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: crossAxisCount,
                     crossAxisSpacing: 16,
-                    mainAxisSpacing: 16,
-                    childAspectRatio: crossAxisCount == 2 ? 2.4 : 3.0,
+                    mainAxisSpacing: 8,
+                    childAspectRatio: crossAxisCount == 2 ? 1.8 : 2.2,
                   ),
                   itemCount: links.length,
                   itemBuilder: (context, index) => _buildLinkCard(links[index]),
@@ -1078,99 +1078,95 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final dateStr = _formatDate(link.createdAt);
     final isEditing = _editingLink?.id == link.id;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: isEditing ? Border.all(color: AppColors.primary, width: 2) : null,
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 2))],
-      ),
-      child: InkWell(
-        onTap: () async {
-          ref.read(linkActionsProvider.notifier).markAsRead(link.id);
-          final uri = Uri.parse(link.url);
-          if (await canLaunchUrl(uri)) {
-            await launchUrl(uri, mode: LaunchMode.externalApplication);
-          }
-        },
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Left content: title, url, date
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(link.title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.onSurface), maxLines: 1, overflow: TextOverflow.ellipsis),
-                    const SizedBox(height: 4),
-                    Text(link.url, style: TextStyle(fontSize: 12, color: AppColors.onSurfaceVariant), maxLines: 2, overflow: TextOverflow.ellipsis),
-                    const SizedBox(height: 8),
-                    Row(
+    return Column(
+      children: [
+        // Link card
+        Container(
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: isEditing ? Border.all(color: AppColors.primary, width: 2) : null,
+            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 2))],
+          ),
+          child: InkWell(
+            onTap: () async {
+              ref.read(linkActionsProvider.notifier).markAsRead(link.id);
+              final uri = Uri.parse(link.url);
+              if (await canLaunchUrl(uri)) {
+                await launchUrl(uri, mode: LaunchMode.externalApplication);
+              }
+            },
+            borderRadius: BorderRadius.circular(16),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Left content: title, url, date
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(dateStr, style: TextStyle(fontSize: 11, color: AppColors.onSurfaceVariant)),
-                        if (!link.isRead) ...[
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
-                            child: const Text('안 읽음', style: TextStyle(fontSize: 10, color: AppColors.primary)),
-                          ),
-                        ],
+                        Text(link.title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.onSurface), maxLines: 1, overflow: TextOverflow.ellipsis),
+                        const SizedBox(height: 4),
+                        Text(link.url, style: TextStyle(fontSize: 12, color: AppColors.onSurfaceVariant), maxLines: 2, overflow: TextOverflow.ellipsis),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Text(dateStr, style: TextStyle(fontSize: 11, color: AppColors.onSurfaceVariant)),
+                            if (!link.isRead) ...[
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
+                                child: const Text('안 읽음', style: TextStyle(fontSize: 10, color: AppColors.primary)),
+                              ),
+                            ],
+                          ],
+                        ),
                       ],
                     ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              // Right content: thumbnail + action buttons
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
+                  ),
+                  const SizedBox(width: 12),
                   // Thumbnail
                   ClipRRect(
                     borderRadius: BorderRadius.circular(12),
                     child: Container(
                       width: 100,
-                      height: 70,
+                      height: 80,
                       color: AppColors.surfaceVariant,
                       child: link.thumbnailUrl != null && link.thumbnailUrl!.isNotEmpty
                           ? Image.network(link.thumbnailUrl!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => _buildPlaceholderImage())
                           : _buildPlaceholderImage(),
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  // Action buttons row
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _buildCircleActionButton(
-                        icon: Icons.edit_outlined,
-                        onTap: () => _startEditingLink(link),
-                      ),
-                      const SizedBox(width: 8),
-                      _buildCircleActionButton(
-                        icon: link.isFavorite ? Icons.star : Icons.star_outline,
-                        color: link.isFavorite ? Colors.amber : null,
-                        onTap: () async {
-                          await ref.read(linkActionsProvider.notifier).toggleFavorite(link.id);
-                        },
-                      ),
-                      const SizedBox(width: 8),
-                      _buildCircleActionButton(
-                        icon: Icons.more_horiz,
-                        onTap: () => _showShareBottomSheet(link),
-                      ),
-                    ],
-                  ),
                 ],
+              ),
+            ),
+          ),
+        ),
+        // Action buttons below the card
+        Padding(
+          padding: const EdgeInsets.only(top: 8, right: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              _buildCircleActionButton(
+                icon: Icons.edit_outlined,
+                onTap: () => _startEditingLink(link),
+              ),
+              const SizedBox(width: 8),
+              _buildCircleActionButton(
+                icon: link.isFavorite ? Icons.bookmark : Icons.bookmark_outline,
+                color: link.isFavorite ? AppColors.primary : null,
+                onTap: () async {
+                  await ref.read(linkActionsProvider.notifier).toggleFavorite(link.id);
+                },
               ),
             ],
           ),
         ),
-      ),
+      ],
     );
   }
 
