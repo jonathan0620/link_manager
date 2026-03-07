@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/share_helper.dart';
+import '../../../../core/widgets/toast_helper.dart';
 import '../../../../core/widgets/zoop_logo.dart';
 import '../../../auth/providers/auth_provider.dart';
 import '../../../link/providers/link_form_provider.dart';
@@ -19,7 +20,7 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
-  // 0: Home, 1: Add Link, 2: Search
+  // 0: Home, 1: Add Link, 2: Search, 3: Edit Link
   int _selectedNavIndex = 0;
   String _selectedFilter = 'recent';
 
@@ -31,12 +32,39 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   bool _hasSearched = false;
   bool _isSearching = false;
 
+  // Edit mode state
+  LinkModel? _editingLink;
+  String _originalUrl = '';
+  String _originalTitle = '';
+  String? _originalLabel;
+
   @override
   void dispose() {
     _urlController.dispose();
     _titleController.dispose();
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _startEditingLink(LinkModel link) {
+    setState(() {
+      _selectedNavIndex = 3; // Edit mode
+      _editingLink = link;
+      _originalUrl = link.url;
+      _originalTitle = link.title;
+      _originalLabel = link.label;
+      _urlController.text = link.url;
+      _titleController.text = link.title;
+    });
+    ref.read(linkFormProvider.notifier).initWithLink(link);
+  }
+
+  bool get _hasChanges {
+    if (_editingLink == null) return false;
+    final formState = ref.read(linkFormProvider);
+    return _urlController.text != _originalUrl ||
+        _titleController.text != _originalTitle ||
+        formState.label != _originalLabel;
   }
 
   @override
@@ -195,6 +223,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         return _buildAddLinkPanel();
       case 2:
         return _buildSearchPanel();
+      case 3:
+        return _buildEditLinkPanel();
       default:
         return const SizedBox.shrink();
     }
@@ -640,6 +670,181 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
   }
 
+  // ============ EDIT LINK PANEL ============
+  Widget _buildEditLinkPanel() {
+    final formState = ref.watch(linkFormProvider);
+    final hasChanges = _editingLink != null &&
+        (_urlController.text != _originalUrl ||
+            _titleController.text != _originalTitle ||
+            formState.label != _originalLabel);
+
+    return Container(
+      color: AppColors.surface,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () {
+                setState(() {
+                  _selectedNavIndex = 0;
+                  _editingLink = null;
+                });
+                _urlController.clear();
+                _titleController.clear();
+                ref.read(linkFormProvider.notifier).reset();
+              },
+            ),
+          ),
+
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              children: [
+                _buildLabel('링크 주소', isRequired: true),
+                const SizedBox(height: 8),
+                _buildUrlField(formState),
+                const SizedBox(height: 20),
+
+                if (formState.thumbnailUrl != null && formState.thumbnailUrl!.isNotEmpty)
+                  _buildThumbnailPreview(formState.thumbnailUrl!),
+
+                _buildLabel('제목'),
+                const SizedBox(height: 8),
+                _buildTitleField(),
+                const SizedBox(height: 20),
+
+                _buildLabel('라벨링'),
+                const SizedBox(height: 12),
+                _buildLabelGrid(formState.label),
+                const SizedBox(height: 32),
+
+                // Delete and Edit buttons
+                Row(
+                  children: [
+                    // Delete button
+                    Expanded(
+                      child: SizedBox(
+                        height: 48,
+                        child: ElevatedButton(
+                          onPressed: formState.isLoading ? null : _handleDeleteLink,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.error,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          child: const Text('링크 삭제', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // Edit button
+                    Expanded(
+                      child: SizedBox(
+                        height: 48,
+                        child: ElevatedButton(
+                          onPressed: (formState.isLoading || !hasChanges) ? null : _handleUpdateLink,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: hasChanges ? AppColors.primary : AppColors.buttonDisabled,
+                            foregroundColor: hasChanges ? Colors.white : AppColors.buttonTextDisabled,
+                            disabledBackgroundColor: AppColors.buttonDisabled,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          child: formState.isLoading
+                              ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                              : const Text('링크 수정', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _handleUpdateLink() async {
+    if (_editingLink == null) return;
+
+    final formState = ref.read(linkFormProvider);
+    ref.read(linkFormProvider.notifier).setLoading(true);
+
+    final title = _titleController.text.trim().isEmpty
+        ? (formState.title.isEmpty ? '제목 없음' : formState.title)
+        : _titleController.text.trim();
+
+    final success = await ref.read(linkActionsProvider.notifier).updateLink(
+      linkId: _editingLink!.id,
+      url: formState.url,
+      title: title,
+      thumbnailUrl: formState.thumbnailUrl,
+      label: formState.label,
+    );
+
+    ref.read(linkFormProvider.notifier).setLoading(false);
+
+    if (success && mounted) {
+      _showSnackBar('링크가 수정되었습니다!');
+      setState(() {
+        _selectedNavIndex = 0;
+        _editingLink = null;
+      });
+      _urlController.clear();
+      _titleController.clear();
+      ref.read(linkFormProvider.notifier).reset();
+    } else {
+      _showSnackBar('오류가 발생했습니다.', isError: true);
+    }
+  }
+
+  Future<void> _handleDeleteLink() async {
+    if (_editingLink == null) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('링크 삭제'),
+        content: Text('\'${_editingLink!.title}\'을(를) 삭제하시겠습니까?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('취소'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(foregroundColor: AppColors.error),
+            child: const Text('삭제'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      final success = await ref.read(linkActionsProvider.notifier).deleteLink(_editingLink!.id);
+
+      if (success && mounted) {
+        _showSnackBar('링크가 삭제되었습니다.');
+        setState(() {
+          _selectedNavIndex = 0;
+          _editingLink = null;
+        });
+        _urlController.clear();
+        _titleController.clear();
+        ref.read(linkFormProvider.notifier).reset();
+      } else {
+        _showSnackBar('오류가 발생했습니다.', isError: true);
+      }
+    }
+  }
+
   // ============ SEARCH PANEL ============
   Widget _buildSearchPanel() {
     return Container(
@@ -871,11 +1076,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   Widget _buildLinkCard(LinkModel link) {
     final dateStr = _formatDate(link.createdAt);
+    final isEditing = _editingLink?.id == link.id;
 
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
+        border: isEditing ? Border.all(color: AppColors.primary, width: 2) : null,
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 2))],
       ),
       child: InkWell(
@@ -890,16 +1097,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Left content: title, url, date
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(link.title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.onSurface), maxLines: 1, overflow: TextOverflow.ellipsis),
                     const SizedBox(height: 4),
                     Text(link.url, style: TextStyle(fontSize: 12, color: AppColors.onSurfaceVariant), maxLines: 2, overflow: TextOverflow.ellipsis),
-                    const Spacer(),
+                    const SizedBox(height: 8),
                     Row(
                       children: [
                         Text(dateStr, style: TextStyle(fontSize: 11, color: AppColors.onSurfaceVariant)),
@@ -917,47 +1125,74 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
               ),
               const SizedBox(width: 12),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  width: 90,
-                  height: 70,
-                  color: AppColors.surfaceVariant,
-                  child: link.thumbnailUrl != null && link.thumbnailUrl!.isNotEmpty
-                      ? Image.network(link.thumbnailUrl!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => _buildPlaceholderImage())
-                      : _buildPlaceholderImage(),
-                ),
-              ),
+              // Right content: thumbnail + action buttons
               Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  IconButton(
-                    icon: Icon(
-                      link.isFavorite ? Icons.star : Icons.star_outline,
-                      size: 18,
+                  // Thumbnail
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      width: 100,
+                      height: 70,
+                      color: AppColors.surfaceVariant,
+                      child: link.thumbnailUrl != null && link.thumbnailUrl!.isNotEmpty
+                          ? Image.network(link.thumbnailUrl!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => _buildPlaceholderImage())
+                          : _buildPlaceholderImage(),
                     ),
-                    color: link.isFavorite ? Colors.amber : AppColors.onSurfaceVariant,
-                    onPressed: () async {
-                      await ref.read(linkActionsProvider.notifier).toggleFavorite(link.id);
-                    },
-                    visualDensity: VisualDensity.compact,
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.edit_outlined, size: 18),
-                    color: AppColors.onSurfaceVariant,
-                    onPressed: () => context.push('/edit-link/${link.id}'),
-                    visualDensity: VisualDensity.compact,
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.more_vert, size: 18),
-                    color: AppColors.onSurfaceVariant,
-                    onPressed: () => _showShareBottomSheet(link),
-                    visualDensity: VisualDensity.compact,
+                  const SizedBox(height: 8),
+                  // Action buttons row
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _buildCircleActionButton(
+                        icon: Icons.edit_outlined,
+                        onTap: () => _startEditingLink(link),
+                      ),
+                      const SizedBox(width: 8),
+                      _buildCircleActionButton(
+                        icon: link.isFavorite ? Icons.star : Icons.star_outline,
+                        color: link.isFavorite ? Colors.amber : null,
+                        onTap: () async {
+                          await ref.read(linkActionsProvider.notifier).toggleFavorite(link.id);
+                        },
+                      ),
+                      const SizedBox(width: 8),
+                      _buildCircleActionButton(
+                        icon: Icons.more_horiz,
+                        onTap: () => _showShareBottomSheet(link),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCircleActionButton({
+    required IconData icon,
+    required VoidCallback onTap,
+    Color? color,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        width: 32,
+        height: 32,
+        decoration: BoxDecoration(
+          color: AppColors.surfaceVariant,
+          shape: BoxShape.circle,
+        ),
+        child: Icon(
+          icon,
+          size: 16,
+          color: color ?? AppColors.onSurfaceVariant,
         ),
       ),
     );
@@ -1041,14 +1276,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   void _showSnackBar(String message, {bool isError = false}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(children: [Icon(isError ? Icons.error : Icons.check_circle, color: Colors.white), const SizedBox(width: 8), Text(message)]),
-        backgroundColor: isError ? AppColors.error : AppColors.onBackground,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      ),
-    );
+    ToastHelper.showSnackBar(context, message, isError: isError);
   }
 
   void _showShareBottomSheet(LinkModel link) {

@@ -133,13 +133,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
 
   void _showSnackBar(String message, {required bool isError}) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: isError ? Colors.red : Colors.green,
-        duration: const Duration(seconds: 4),
-      ),
-    );
+    ToastHelper.showSnackBar(context, message, isError: isError);
   }
 
   @override

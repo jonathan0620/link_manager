@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/widgets/toast_helper.dart';
 import '../../../../core/widgets/zoop_logo.dart';
 import '../../providers/auth_provider.dart';
 
@@ -50,13 +51,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   void _showSnackBar(String message, {bool isError = false}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: isError ? AppColors.error : AppColors.success,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    ToastHelper.showSnackBar(context, message, isError: isError);
   }
 
   @override

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/widgets/toast_helper.dart';
 import '../../../../core/widgets/zoop_logo.dart';
 import '../../../home/providers/links_provider.dart';
 import '../../providers/link_form_provider.dart';
@@ -74,23 +75,7 @@ class _AddLinkScreenState extends ConsumerState<AddLinkScreen> {
   }
 
   void _showSnackBar(String message, {bool isError = false}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Icon(
-              isError ? Icons.error : Icons.check_circle,
-              color: Colors.white,
-            ),
-            const SizedBox(width: 8),
-            Text(message),
-          ],
-        ),
-        backgroundColor: isError ? AppColors.error : AppColors.onBackground,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      ),
-    );
+    ToastHelper.showSnackBar(context, message, isError: isError);
   }
 
   @override
