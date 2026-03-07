@@ -211,63 +211,71 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final unreadCount = unreadLinksAsync.valueOrNull?.length ?? 0;
     final favoriteCount = favoriteLinksAsync.valueOrNull?.length ?? 0;
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+    return Container(
+      color: AppColors.surface,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Close button
-          IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () => setState(() => _selectedNavIndex = -1),
-          ),
-          const SizedBox(height: 16),
-
-          // Filter buttons
-          _buildFilterButton('recent', '최근에 저장한 링크', recentCount),
-          const SizedBox(height: 10),
-          _buildFilterButton('unread', '안 읽은 링크', unreadCount),
-          const SizedBox(height: 10),
-          _buildFavoriteFilterButton(favoriteCount),
-
-          const SizedBox(height: 32),
-
-          // Labels section
-          const Text(
-            'Label',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: AppColors.onSurface,
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () => setState(() => _selectedNavIndex = -1),
             ),
           ),
-          const SizedBox(height: 12),
 
-          uniqueLabelsAsync.when(
-            data: (labels) {
-              if (labels.isEmpty) {
-                return Column(
-                  children: [
-                    _buildLabelItem('취미', 0),
-                    _buildLabelItem('맛집', 0),
-                    _buildLabelItem('주식', 0),
-                  ],
-                );
-              }
-              return Column(
-                children: labels.map((label) => _buildLabelItem(label, 0)).toList(),
-              );
-            },
-            loading: () => const SizedBox(),
-            error: (_, __) => const SizedBox(),
-          ),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              children: [
+                _buildFilterButton('recent', '최근에 저장한 링크', recentCount),
+                const SizedBox(height: 10),
+                _buildFilterButton('unread', '안 읽은 링크', unreadCount),
+                const SizedBox(height: 10),
+                _buildFavoriteFilterButton(favoriteCount),
 
-          const SizedBox(height: 16),
-          Text(
-            '링크에서 라벨을 추가하면\n자동으로 카테고리가 생성됩니다.',
-            style: TextStyle(
-              fontSize: 12,
-              color: AppColors.onSurfaceVariant,
+                const SizedBox(height: 32),
+
+                const Text(
+                  'Label',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                uniqueLabelsAsync.when(
+                  data: (labels) {
+                    if (labels.isEmpty) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildLabelItem('취미', 0),
+                          _buildLabelItem('맛집', 0),
+                          _buildLabelItem('주식', 0),
+                        ],
+                      );
+                    }
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: labels.map((label) => _buildLabelItem(label, 0)).toList(),
+                    );
+                  },
+                  loading: () => const SizedBox(),
+                  error: (_, __) => const SizedBox(),
+                ),
+
+                const SizedBox(height: 16),
+                Text(
+                  '링크에서 라벨을 추가하면\n자동으로 카테고리가 생성됩니다.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.onSurfaceVariant,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -392,36 +400,45 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget _buildAddLinkPanel() {
     final formState = ref.watch(linkFormProvider);
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+    return Container(
+      color: AppColors.surface,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () => setState(() => _selectedNavIndex = -1),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () => setState(() => _selectedNavIndex = -1),
+            ),
           ),
-          const SizedBox(height: 16),
 
-          _buildLabel('링크 주소', isRequired: true),
-          const SizedBox(height: 8),
-          _buildUrlField(formState),
-          const SizedBox(height: 20),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              children: [
+                _buildLabel('링크 주소', isRequired: true),
+                const SizedBox(height: 8),
+                _buildUrlField(formState),
+                const SizedBox(height: 20),
 
-          if (formState.thumbnailUrl != null && formState.thumbnailUrl!.isNotEmpty)
-            _buildThumbnailPreview(formState.thumbnailUrl!),
+                if (formState.thumbnailUrl != null && formState.thumbnailUrl!.isNotEmpty)
+                  _buildThumbnailPreview(formState.thumbnailUrl!),
 
-          _buildLabel('제목'),
-          const SizedBox(height: 8),
-          _buildTitleField(),
-          const SizedBox(height: 20),
+                _buildLabel('제목'),
+                const SizedBox(height: 8),
+                _buildTitleField(),
+                const SizedBox(height: 20),
 
-          _buildLabel('라벨링'),
-          const SizedBox(height: 12),
-          _buildLabelGrid(formState.label),
-          const SizedBox(height: 24),
+                _buildLabel('라벨링'),
+                const SizedBox(height: 12),
+                _buildLabelGrid(formState.label),
+                const SizedBox(height: 24),
 
-          _buildSaveButton(formState),
+                _buildSaveButton(formState),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -625,70 +642,73 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   // ============ SEARCH PANEL ============
   Widget _buildSearchPanel() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () => setState(() => _selectedNavIndex = -1),
-          ),
-        ),
-
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 24),
-          child: Text('검색', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.onSurface)),
-        ),
-        const SizedBox(height: 12),
-
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Container(
-            decoration: BoxDecoration(
-              color: AppColors.surfaceVariant,
-              borderRadius: BorderRadius.circular(12),
+    return Container(
+      color: AppColors.surface,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () => setState(() => _selectedNavIndex = -1),
             ),
-            child: Row(
-              children: [
-                const Padding(
-                  padding: EdgeInsets.only(left: 12),
-                  child: Icon(Icons.search, size: 20, color: AppColors.onSurfaceVariant),
-                ),
-                Expanded(
-                  child: TextField(
-                    controller: _searchController,
-                    style: const TextStyle(fontSize: 14, color: AppColors.onSurface),
-                    decoration: const InputDecoration(
-                      hintText: '검색어 입력',
-                      hintStyle: TextStyle(color: AppColors.textHint),
-                      border: InputBorder.none,
-                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+          ),
+
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 24),
+            child: Text('검색', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.onSurface)),
+          ),
+          const SizedBox(height: 12),
+
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Container(
+              decoration: BoxDecoration(
+                color: AppColors.surfaceVariant,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.only(left: 12),
+                    child: Icon(Icons.search, size: 20, color: AppColors.onSurfaceVariant),
+                  ),
+                  Expanded(
+                    child: TextField(
+                      controller: _searchController,
+                      style: const TextStyle(fontSize: 14, color: AppColors.onSurface),
+                      decoration: const InputDecoration(
+                        hintText: '검색어 입력',
+                        hintStyle: TextStyle(color: AppColors.textHint),
+                        border: InputBorder.none,
+                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                      ),
+                      textInputAction: TextInputAction.search,
+                      onChanged: (_) => setState(() {}),
+                      onSubmitted: (_) => _handleSearch(),
                     ),
-                    textInputAction: TextInputAction.search,
-                    onChanged: (_) => setState(() {}),
-                    onSubmitted: (_) => _handleSearch(),
                   ),
-                ),
-                if (_searchController.text.isNotEmpty)
-                  IconButton(
-                    icon: const Icon(Icons.clear, size: 20),
-                    onPressed: () {
-                      setState(() {
-                        _searchController.clear();
-                        _searchResults = [];
-                        _hasSearched = false;
-                      });
-                    },
-                  ),
-              ],
+                  if (_searchController.text.isNotEmpty)
+                    IconButton(
+                      icon: const Icon(Icons.clear, size: 20),
+                      onPressed: () {
+                        setState(() {
+                          _searchController.clear();
+                          _searchResults = [];
+                          _hasSearched = false;
+                        });
+                      },
+                    ),
+                ],
+              ),
             ),
           ),
-        ),
-        const SizedBox(height: 16),
+          const SizedBox(height: 16),
 
-        Expanded(child: _buildSearchResults()),
-      ],
+          Expanded(child: _buildSearchResults()),
+        ],
+      ),
     );
   }
 
@@ -912,13 +932,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   IconButton(
+                    icon: Icon(
+                      link.isFavorite ? Icons.star : Icons.star_outline,
+                      size: 18,
+                    ),
+                    color: link.isFavorite ? Colors.amber : AppColors.onSurfaceVariant,
+                    onPressed: () async {
+                      await ref.read(linkActionsProvider.notifier).toggleFavorite(link.id);
+                    },
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  IconButton(
                     icon: const Icon(Icons.edit_outlined, size: 18),
                     color: AppColors.onSurfaceVariant,
                     onPressed: () => context.push('/edit-link/${link.id}'),
                     visualDensity: VisualDensity.compact,
                   ),
                   IconButton(
-                    icon: const Icon(Icons.bookmark_outline, size: 18),
+                    icon: const Icon(Icons.more_vert, size: 18),
                     color: AppColors.onSurfaceVariant,
                     onPressed: () => _showShareBottomSheet(link),
                     visualDensity: VisualDensity.compact,
@@ -940,6 +971,51 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Widget _buildEmptyState() {
+    final selectedCategory = ref.watch(selectedCategoryProvider);
+
+    // 안 읽은 링크 필터일 때
+    if (selectedCategory == '__unread__') {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.check_circle_outline, size: 64, color: AppColors.primary.withOpacity(0.5)),
+            const SizedBox(height: 16),
+            Text('모든 링크를 다 읽었습니다!', textAlign: TextAlign.center, style: TextStyle(fontSize: 16, color: AppColors.onSurfaceVariant)),
+          ],
+        ),
+      );
+    }
+
+    // 즐겨찾기 필터일 때
+    if (selectedCategory == '__favorite__') {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.star_outline, size: 64, color: AppColors.onSurfaceVariant.withOpacity(0.5)),
+            const SizedBox(height: 16),
+            Text('즐겨찾기한 링크가 없습니다', textAlign: TextAlign.center, style: TextStyle(fontSize: 16, color: AppColors.onSurfaceVariant)),
+          ],
+        ),
+      );
+    }
+
+    // 라벨 필터일 때
+    if (selectedCategory != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.label_outline, size: 64, color: AppColors.onSurfaceVariant.withOpacity(0.5)),
+            const SizedBox(height: 16),
+            Text('\'$selectedCategory\' 라벨의 링크가 없습니다', textAlign: TextAlign.center, style: TextStyle(fontSize: 16, color: AppColors.onSurfaceVariant)),
+          ],
+        ),
+      );
+    }
+
+    // 기본 (최근 저장한 링크)
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -976,6 +1052,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   void _showShareBottomSheet(LinkModel link) {
+    // 제목이 비어있거나 "제목 없음"이면 URL에서 도메인 추출
+    String displayTitle = link.title;
+    if (displayTitle.isEmpty || displayTitle == '제목 없음') {
+      try {
+        final uri = Uri.parse(link.url);
+        displayTitle = uri.host;
+      } catch (_) {
+        displayTitle = link.url;
+      }
+    }
+
     showModalBottomSheet(
       context: context,
       backgroundColor: AppColors.surface,
@@ -990,25 +1077,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               const SizedBox(height: 20),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Text(link.title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.onSurface), maxLines: 1, overflow: TextOverflow.ellipsis),
+                child: Text(displayTitle, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.onSurface), maxLines: 1, overflow: TextOverflow.ellipsis),
               ),
               const SizedBox(height: 24),
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   _buildShareOption(icon: Icons.copy, label: '복사', color: AppColors.primary, onTap: () async {
                     Navigator.of(context).pop();
                     final success = await ShareHelper.copyToClipboard(link.url);
                     if (success && mounted) _showSnackBar('링크가 복사되었습니다.');
                   }),
-                  _buildShareOption(icon: Icons.chat_bubble, label: '카카오톡', color: const Color(0xFFFFE812), iconColor: Colors.black87, onTap: () async {
-                    Navigator.of(context).pop();
-                    await ShareHelper.shareViaKakaoTalk(url: link.url, title: link.title);
-                  }),
-                  _buildShareOption(icon: Icons.share, label: '더보기', color: AppColors.onSurfaceVariant, onTap: () async {
-                    Navigator.of(context).pop();
-                    await ShareHelper.shareLink(url: link.url, title: link.title);
-                  }),
+                  const SizedBox(width: 32),
                   _buildShareOption(icon: Icons.delete_outline, label: '삭제', color: AppColors.error, onTap: () {
                     Navigator.of(context).pop();
                     _showDeleteDialog(link);

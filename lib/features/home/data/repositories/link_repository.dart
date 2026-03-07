@@ -71,39 +71,45 @@ class LinkRepository {
   Stream<List<LinkModel>> getUnreadLinksStream() {
     if (_userId == null) return Stream.value([]);
 
+    // Firestore 인덱스 없이 로컬에서 필터링
     return _linksCollection
         .where('userId', isEqualTo: _userId)
-        .where('isRead', isEqualTo: false)
         .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snapshot) =>
-            snapshot.docs.map((doc) => LinkModel.fromFirestore(doc)).toList());
+        .map((snapshot) {
+          final links = snapshot.docs.map((doc) => LinkModel.fromFirestore(doc)).toList();
+          return links.where((link) => !link.isRead).toList();
+        });
   }
 
   /// Get links by label
   Stream<List<LinkModel>> getLinksByLabelStream(String label) {
     if (_userId == null) return Stream.value([]);
 
+    // Firestore 인덱스 없이 로컬에서 필터링
     return _linksCollection
         .where('userId', isEqualTo: _userId)
-        .where('label', isEqualTo: label)
         .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snapshot) =>
-            snapshot.docs.map((doc) => LinkModel.fromFirestore(doc)).toList());
+        .map((snapshot) {
+          final links = snapshot.docs.map((doc) => LinkModel.fromFirestore(doc)).toList();
+          return links.where((link) => link.label == label).toList();
+        });
   }
 
   /// Get favorite links
   Stream<List<LinkModel>> getFavoriteLinksStream() {
     if (_userId == null) return Stream.value([]);
 
+    // Firestore 인덱스 없이 로컬에서 필터링
     return _linksCollection
         .where('userId', isEqualTo: _userId)
-        .where('isFavorite', isEqualTo: true)
         .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snapshot) =>
-            snapshot.docs.map((doc) => LinkModel.fromFirestore(doc)).toList());
+        .map((snapshot) {
+          final links = snapshot.docs.map((doc) => LinkModel.fromFirestore(doc)).toList();
+          return links.where((link) => link.isFavorite).toList();
+        });
   }
 
   /// Get link by ID

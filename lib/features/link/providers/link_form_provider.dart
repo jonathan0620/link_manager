@@ -117,16 +117,16 @@ class LinkFormNotifier extends StateNotifier<LinkFormState> {
   }
 
   Future<void> _fetchMetadataViaCloudFunction(String url) async {
-    // Use Microlink API (free, no API key required, CORS-friendly)
+    // Try multiple free APIs as fallback
+
+    // 1. Try Microlink API first (50 req/day free)
     try {
       final apiUrl = 'https://api.microlink.io/?url=${Uri.encodeComponent(url)}';
       final response = await http.get(Uri.parse(apiUrl)).timeout(
-        const Duration(seconds: 10),
+        const Duration(seconds: 8),
       );
 
       if (response.statusCode == 200) {
-        final json = Uri.splitQueryString(response.body);
-        // Parse JSON response
         final data = _parseJson(response.body);
 
         if (data != null && data['status'] == 'success') {
@@ -136,6 +136,39 @@ class LinkFormNotifier extends StateNotifier<LinkFormState> {
             final imageData = dataObj['image'] as Map<String, dynamic>?;
             final imageUrl = imageData?['url'] as String? ?? '';
 
+            if (title.isNotEmpty || imageUrl.isNotEmpty) {
+              state = state.copyWith(
+                title: title.isNotEmpty ? title : state.title,
+                thumbnailUrl: imageUrl.isNotEmpty ? imageUrl : state.thumbnailUrl,
+                isFetchingMetadata: false,
+              );
+              return;
+            }
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('[LinkFormNotifier] Microlink API error: $e');
+    }
+
+    // 2. Try jsonlink.io as fallback (free, unlimited)
+    try {
+      final apiUrl = 'https://jsonlink.io/api/extract?url=${Uri.encodeComponent(url)}';
+      final response = await http.get(Uri.parse(apiUrl)).timeout(
+        const Duration(seconds: 8),
+      );
+
+      if (response.statusCode == 200) {
+        final data = _parseJson(response.body);
+
+        if (data != null) {
+          final title = data['title'] as String? ?? '';
+          final images = data['images'] as List<dynamic>?;
+          final imageUrl = (images != null && images.isNotEmpty)
+              ? images[0] as String? ?? ''
+              : '';
+
+          if (title.isNotEmpty || imageUrl.isNotEmpty) {
             state = state.copyWith(
               title: title.isNotEmpty ? title : state.title,
               thumbnailUrl: imageUrl.isNotEmpty ? imageUrl : state.thumbnailUrl,
@@ -145,12 +178,26 @@ class LinkFormNotifier extends StateNotifier<LinkFormState> {
           }
         }
       }
-
-      state = state.copyWith(isFetchingMetadata: false);
     } catch (e) {
-      debugPrint('[LinkFormNotifier] Microlink API error: $e');
-      state = state.copyWith(isFetchingMetadata: false);
+      debugPrint('[LinkFormNotifier] jsonlink.io API error: $e');
     }
+
+    // 3. If all else fails, use website screenshot as thumbnail
+    try {
+      final uri = Uri.parse(url);
+      final screenshotUrl = 'https://image.thum.io/get/width/300/${uri.toString()}';
+
+      state = state.copyWith(
+        title: state.title.isNotEmpty ? state.title : uri.host,
+        thumbnailUrl: screenshotUrl,
+        isFetchingMetadata: false,
+      );
+      return;
+    } catch (e) {
+      debugPrint('[LinkFormNotifier] Screenshot fallback error: $e');
+    }
+
+    state = state.copyWith(isFetchingMetadata: false);
   }
 
   Map<String, dynamic>? _parseJson(String body) {
