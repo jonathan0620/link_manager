@@ -186,11 +186,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ),
             ),
 
-            // Bottom dark bar
-            Container(
-              height: 32,
-              color: AppColors.onBackground,
-            ),
           ],
         ),
       ),
