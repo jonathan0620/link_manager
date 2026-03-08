@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/services/notification_service.dart';
 import '../../../../core/utils/share_helper.dart';
 import '../../../../core/widgets/toast_helper.dart';
 import '../../../../core/widgets/zoop_logo.dart';
@@ -37,6 +38,34 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   String _originalUrl = '';
   String _originalTitle = '';
   String? _originalLabel;
+
+  // Notification state
+  bool _notificationEnabled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkNotificationPermission();
+  }
+
+  Future<void> _checkNotificationPermission() async {
+    final hasPermission = await NotificationService.hasPermission();
+    if (mounted) {
+      setState(() => _notificationEnabled = hasPermission);
+    }
+  }
+
+  Future<void> _requestNotificationPermission() async {
+    final success = await NotificationService.initialize();
+    if (mounted) {
+      setState(() => _notificationEnabled = success);
+      if (success) {
+        _showSnackBar('알림이 활성화되었습니다!');
+      } else {
+        _showSnackBar('알림 권한이 필요합니다.', isError: true);
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -135,6 +164,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           _buildNavIcon(2, Icons.search_rounded),
 
           const Spacer(),
+
+          // 알림 설정 버튼
+          IconButton(
+            icon: Icon(
+              _notificationEnabled ? Icons.notifications_active : Icons.notifications_outlined,
+              size: 20,
+            ),
+            color: _notificationEnabled ? AppColors.primary : AppColors.onSurfaceVariant,
+            onPressed: _notificationEnabled ? null : _requestNotificationPermission,
+            tooltip: _notificationEnabled ? '알림 활성화됨' : '알림 활성화',
+          ),
 
           IconButton(
             icon: const Icon(Icons.logout, size: 20),
