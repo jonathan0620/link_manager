@@ -565,7 +565,7 @@ exports.generateAISummary = functions.https.onCall(async (data, context) => {
 
     // 2. Generate summary using Gemini AI
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
     const prompt = `다음 웹페이지 내용을 한국어로 3줄로 요약해주세요.
 각 줄은 "• "로 시작하고, 핵심 내용만 간결하게 작성해주세요.

@@ -104,8 +104,8 @@ class LinkActionsNotifier extends StateNotifier<AsyncValue<void>> {
       );
       state = const AsyncValue.data(null);
 
-      // 2. 백그라운드에서 AI 요약 생성
-      _generateSummaryInBackground(link.id, url);
+      // 2. 백그라운드에서 AI 요약 생성 (임시 비활성화 - API 할당량 문제)
+      // _generateSummaryInBackground(link.id, url);
 
       return link;
     } catch (e, st) {

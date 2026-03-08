@@ -1,9 +1,12 @@
+import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/services/notification_service.dart';
+import '../../../../core/services/share_service.dart';
 import '../../../../core/utils/share_helper.dart';
 import '../../../../core/widgets/toast_helper.dart';
 import '../../../../core/widgets/zoop_logo.dart';
@@ -42,10 +45,53 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   // Notification state
   bool _notificationEnabled = false;
 
+  // Share service
+  StreamSubscription<String>? _shareSubscription;
+
   @override
   void initState() {
     super.initState();
     _checkNotificationPermission();
+    _initShareService();
+  }
+
+  void _initShareService() {
+    if (kIsWeb) return;
+
+    final shareService = ShareService();
+
+    // 앱이 공유로 시작된 경우 처리
+    final pendingUrl = shareService.pendingSharedUrl;
+    if (pendingUrl != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _handleSharedUrl(pendingUrl);
+        shareService.clearPendingUrl();
+      });
+    }
+
+    // 실시간 공유 스트림 구독
+    _shareSubscription = shareService.sharedUrlStream.listen((url) {
+      _handleSharedUrl(url);
+    });
+  }
+
+  void _handleSharedUrl(String url) {
+    if (!mounted) return;
+
+    setState(() {
+      _selectedNavIndex = 1; // Add Link 패널 열기
+      _urlController.text = url;
+    });
+
+    // URL 메타데이터 자동 로드
+    ref.read(linkFormProvider.notifier).updateUrl(url).then((_) {
+      final state = ref.read(linkFormProvider);
+      if (state.title.isNotEmpty && _titleController.text.isEmpty) {
+        _titleController.text = state.title;
+      }
+    });
+
+    _showSnackBar('공유된 링크가 추가되었습니다!');
   }
 
   Future<void> _checkNotificationPermission() async {
@@ -69,6 +115,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   void dispose() {
+    _shareSubscription?.cancel();
     _urlController.dispose();
     _titleController.dispose();
     _searchController.dispose();
