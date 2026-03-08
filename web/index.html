@@ -31,6 +31,21 @@
 
   <title>ZOOP</title>
   <link rel="manifest" href="manifest.json">
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-messaging-compat.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBMArRYYuXEr9sJzijtGd3uuDSefv0HwO0",
+      authDomain: "zoop-36b4f.firebaseapp.com",
+      projectId: "zoop-36b4f",
+      storageBucket: "zoop-36b4f.firebasestorage.app",
+      messagingSenderId: "37292745207",
+      appId: "1:37292745207:web:ef332882cea9790a390ef2"
+    };
+    firebase.initializeApp(firebaseConfig);
+  </script>
 </head>
 <body>
   <!--
@@ -42,5 +57,19 @@
     * https://docs.flutter.dev/platform-integration/web/initialization
   -->
   <script src="flutter_bootstrap.js" async></script>
+  <script>
+    // Firebase Messaging Service Worker 등록
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function() {
+        navigator.serviceWorker.register('/firebase-messaging-sw.js')
+          .then(function(registration) {
+            console.log('Firebase Messaging SW registered: ', registration);
+          })
+          .catch(function(err) {
+            console.log('Firebase Messaging SW registration failed: ', err);
+          });
+      });
+    }
+  </script>
 </body>
 </html>
