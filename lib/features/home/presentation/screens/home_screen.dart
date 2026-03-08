@@ -1226,7 +1226,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     // Left content: title, summary/url, date
                     Expanded(
@@ -1277,12 +1277,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       ),
                     ),
                     const SizedBox(width: 12),
-                    // Thumbnail
+                    // Thumbnail (카드 높이에 맞춤)
                     ClipRRect(
                       borderRadius: BorderRadius.circular(12),
                       child: Container(
-                        width: 100,
-                        height: 80,
+                        width: 110,
                         color: AppColors.surfaceVariant,
                         child: link.thumbnailUrl != null && link.thumbnailUrl!.isNotEmpty
                             ? Image.network(link.thumbnailUrl!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => _buildPlaceholderImage())

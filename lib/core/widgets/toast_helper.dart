@@ -126,7 +126,7 @@ class _CenteredToastState extends State<_CenteredToast>
             child: ScaleTransition(
               scale: _scaleAnimation,
               child: Container(
-                constraints: const BoxConstraints(maxWidth: 320),
+                constraints: const BoxConstraints(maxWidth: 400),
                 padding: const EdgeInsets.symmetric(
                   horizontal: 24,
                   vertical: 16,
@@ -154,9 +154,11 @@ class _CenteredToastState extends State<_CenteredToast>
                     Flexible(
                       child: Text(
                         widget.message,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 15,
+                          fontSize: 14,
                           fontWeight: FontWeight.w500,
                           decoration: TextDecoration.none,
                         ),
